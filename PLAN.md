@@ -200,3 +200,195 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 - [ ] **disko layout**: server partitioning/impermanence specifics.
 - [ ] **Deployment of HM-only work laptop**: confirm SSH reachability / `home-manager switch` locally
       inside WSL before deploy-rs.
+
+---
+
+# Migration: existing `madsbv/nix` → three-repo architecture
+
+**Source:** `github.com/madsbv/nix`, branch `refactor/home-manager-modules` (the current `/etc/nixos/nix`
+checkout). Mid-refactor: all five host configurations evaluate, but `nix flake check` fails. The modules
+themselves are largely sound; the pain is the wiring between them (`local.*` options, `flake-root` /
+`specialArgs` plumbing, preset indirection). This migration therefore **replaces the wiring wholesale**
+and ports modules into the new architecture **one module / conceptual feature at a time**, verifying each
+in the new wiring before moving on. Stabilizing the old repo is explicitly **not** a goal.
+
+> **Implementation workflow**: the default migration unit is one module or conceptual feature per
+> checklist item, but this is not a 1:1 mapping. When porting, you may refactor module internals, split
+> or collect old components, or fold helpers into new features if it streamlines things — surface any
+> such opportunity to the operator for feedback before implementing it.
+
+## Architecture amendment — nix-darwin (supersedes the darwin items in Milestones 1 and 4)
+
+- **Core keeps a small nix-darwin builder**, `lib/mkDarwinHost.nix`, parallel to `lib/mkNixosHost.nix`.
+  It wires the parts of the core featureset shared between NixOS and nix-darwin — the `mine.*` options
+  module, agenix, and the core HM features (git, shell, dev, editors, terminal, ssh) — into a
+  `darwinSystem`. Core pins `nix-darwin` (AD-6). **No darwin-specific system modules live in core.**
+- **All darwin-specific config is personal**: homebrew/nix-homebrew, dock, autorestic, the
+  yabai/skhd/sketchybar/karabiner window-management stack, and macOS system defaults. `mbv-mba`
+  composes `core.lib.mkDarwinHost` + personal darwin features.
+
+## Decisions recorded (confirmed with the operator)
+
+- **Hostnames stay `mbv-*`** — no rename to aurora/lapis/hylas/onyx. Preserves host keys, `rekeyed/`
+  paths, deploy-rs config, tailnet identity, DNS.
+- **No dedicated laptop** — current fleet is desktop + 3 servers + Mac; `lapis` is reserved for a future
+  machine, and `features/laptop.nix` is ported but only enabled then.
+- **Work repo is green-field** — nothing migrates into `work` except shared `core` features; the
+  migration scaffolds `work/` anyway.
+- **Color-scheme goes to core** — base16 wiring + the `molokai` scheme are generic theming.
+- **`keys/builder_ed25519` stays tracked** — it is the macOS linux-builder VM key, not security-sensitive.
+
+## Source inventory (abbreviated)
+
+- **Hosts (5 active)**: `mbv-workstation` (desktop, awesomewm/gaming/steam), `mbv-desktop` (media server
+  + CUDA + cinnamon), `mbv-xps13` (home-assistant laptop-server), `hp-90` (slow laptop-server),
+  `mbv-mba` (nix-darwin). `ephemeral` (nixos-generators installer) is commented out of `flake.nix`.
+- **Module sets**: `systemModules` (builder, common, keys, register-flake, shell, update-diff, users,
+  yubikey-agenix-rekey), `nixosModules` (common, home-assistant, laptop, media-server, protonvpn, restic,
+  server-laptop, tailscale, users, wifi, yubikey, `detect-hostname-change.nix`), `darwinModules`
+  (autorestic, dock), `homeManagerModules` (awesomewm, dev/×13 toolchains, dropbox, emacs, email, git,
+  librewolf, neovim, ssh, terminal, user-profile, zathura).
+- **Presets**: system/common(+packages/desktop/home-manager/yubikey-agenix-rekey), nixos/common(+awesomewm/
+  desktop/efi/server/tracing), darwin/common, home-manager/client(+common/common-packages/nixos),
+  secrets/email.
+- **Secrets**: agenix-rekey layout — `secrets/{other,restic,ssh,tailscale,protonvpn,generated,
+  rekeyed/<host>}/`, `pubkeys/{ssh,yubikey}/`, `keys/`.
+- **Other**: `overlays/` (8), `config/` dotfiles, `policy.hujson` + `.github/workflows/tailscale.yml`,
+  `golden_test/`, devShell, `justfile`.
+
+## Target mapping
+
+| Source | Target | Notes |
+| --- | --- | --- |
+| `/etc/nixos/nix` (madsbv/nix) | `personal` | Continues existing git history. |
+| — (new) | `core` | Fresh repo, clean history (forkable/public). |
+| — (new) | `work` | Fresh repo; only input is `core`. |
+| systemModules/common, users, keys, builder, update-diff, register-flake, yubikey-agenix-rekey | core `modules/system/*`, `modules/agenix.nix` | Parameterized: nodes, host keys, identities, master identities come from the leaf via options. |
+| nixosModules/common, users, tailscale, yubikey, laptop, detect-hostname-change | core `modules/nixos/base.nix`, `features/tailscale.nix`, `features/laptop.nix` | Personal secret paths (restic/wifi) stripped. `mine.network.tailscale.enable` drives tailscale. |
+| homeManagerModules dev/×13, git, ssh, terminal, neovim, emacs, user-profile | core `features/dev/*`, `features/dev/git.nix`, `features/dev/ssh.nix`, `features/shell.nix`, `features/editors/*` | Identity switches from `local.userProfile` to `mine.user.*`. |
+| presets system/common(+packages/home-manager), nixos/common, nixos/efi, nixos/tracing, home-manager/common | core profiles + base composites | `nixos/desktop` split: generic (pipewire/lightdm/portal/fonts) → core `desktop` profile; app-specific → personal. |
+| overlays/, color-scheme (molokai + base16), nox, devShell; `lib/mkDarwinHost` + minimal darwin wiring; inputs fenix/base16/hosts/direnv-instant/impermanence/disko/deploy-rs/agenix-rekey/nix-auth/nix-darwin | core `overlays/`, `pkgs/`, devShell, `lib/mkDarwinHost.nix`, `flake.nix` | Color scheme per decision; input ownership follows the modules. |
+| config/zsh-plugins/p10k-config, config/kitty | core (shell + terminal features) | Relative self-references replace `flake-root`. |
+| hosts/×, presets/secrets/email, secrets/, pubkeys/, keys/, policy.hujson, .github/workflows/tailscale.yml, golden_test/ | personal | Hosts keep names. |
+| nixosModules home-assistant, media-server, protonvpn, restic, wifi | personal features | Machine/network-specific. |
+| **darwinModules dock, autorestic**; `darwin/common` preset; `hosts/mbv-mba/nix-darwin/*`; inputs nix-homebrew + homebrew taps | **personal** (`features/darwin/*`: homebrew, dock, autorestic, window-mgmt) | Per architecture amendment; darwin *builder* stays in core. |
+| homeManagerModules awesomewm, dropbox, email, librewolf, zathura; config/{awesome,yabai,skhd,sketchybar,karabiner,svim} | personal features | |
+| — (new) | `work/hosts/work-laptop/` + work secrets | HM-only via `mkHomeConfig`; nixos-wsl later. |
+
+## Migration milestones
+
+### M1 — Core framework: replace the wiring (delivers Milestones 0–1)
+
+- [ ] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
+- [ ] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
+      location.{timezone,latitude,longitude}, network.tailscale.enable), ported from `systemModules/common`
+      + `homeManagerModules/user-profile`.
+- [ ] `modules/agenix.nix` — rekey mechanism from `systemModules/yubikey-agenix-rekey`; options
+      `masterIdentities` / `hostPubkey` / `localStorageDir` / `generatedSecretsDir` supplied by the leaf.
+- [ ] `modules/system/*` — keys, builder, users framework (rewritten around `mine.user.*` + per-host user
+      list; provides home-manager wiring + agenix id-key provisioning), update-diff, register-flake,
+      detect-hostname-change.
+- [ ] `modules/nixos/base.nix` — from `nixosModules/common`: networking/firewall/nameservers, systemd
+      tweaks, openssh, zfs, impermanence base, autoUpgrade (flake URL from leaf), programs, sudo, user
+      defaults. Personal secret paths (restic/wifi) stripped.
+- [ ] Base composites + builders: `modules/base.nix` (nixos.base + homeManager.base),
+      `lib/mkNixosHost.nix`, `lib/mkDarwinHost.nix` (small, shared wiring), `lib/mkHomeConfig.nix`,
+      `lib/mkDeploy.nix`.
+- [ ] Color-scheme (base16 + `molokai`), overlays, `pkgs` (nox et al.), core devShell, and the core-owned
+      flake inputs (fenix, base16, hosts, direnv-instant, impermanence, disko, deploy-rs, agenix-rekey,
+      nix-auth, nix-darwin).
+- [ ] Proof modules: port `shell` (from `systemModules/shell`) and `git` / `ssh` (from
+      `homeManagerModules/{git,ssh}`, reading `mine.user.*`); verify a scratch NixOS host and a standalone
+      `mkHomeConfig` both evaluate.
+
+**Acceptance criteria**
+
+- `nix flake check` green in core; scratch host + standalone HM build from core only.
+- No darwin-specific system modules in core (builder + shared HM features only).
+
+### M2 — Core-bound modules, one per checklist item
+
+Each item ports one module/feature → one core file, adapting `local.*` → `mine.*`, `flake-root` →
+relative refs, `specialArgs` → options. Verified (scratch host + standalone HM + `nix flake check`)
+before the next item.
+
+- [ ] `features/dev` toolchains, one per item: fortran, git (lfs), github, go, java, javascript, lua,
+      nix, python, R, rust, shell (dev), tools → `features/dev/<name>.nix`.
+- [ ] `features/editors/neovim.nix` (from `homeManagerModules/neovim`).
+- [ ] `features/editors/emacs.nix` (from `homeManagerModules/emacs`).
+- [ ] `features/terminal.nix` (from `homeManagerModules/terminal` + `config/kitty`).
+- [ ] `features/tailscale.nix` (from `nixosModules/tailscale`; driven by `mine.network.tailscale.enable`;
+      authkey from leaf).
+- [ ] `features/yubikey.nix` (from `nixosModules/yubikey`).
+- [ ] `features/laptop.nix` (from `nixosModules/laptop`; reserved for a future laptop).
+- [ ] Core profiles: `modules/profiles/{base,shell,dev,editors}` aggregates.
+
+**Acceptance criteria**
+
+- Every core feature builds in a scratch NixOS host + standalone HM; `nix flake check` green.
+- No personal values or secrets anywhere in core.
+
+### M3 — Personal-bound modules, one per checklist item + host bring-up
+
+- [ ] Scaffold `personal/`: continue `madsbv/nix` history; flake inputs = `core` + `nix-homebrew` +
+      homebrew taps; `secrets/` layout (secrets.nix, committed `rekeyed/`, `generated/`), `pubkeys/`,
+      `keys/`; wire leaf values into `core.modules/agenix.nix`.
+- [ ] `features/desktop` (from `presets/nixos/desktop` generic remainder, `presets/nixos/awesomewm`,
+      `homeManagerModules/awesomewm`, `config/awesome`).
+- [ ] `features/email` (from `homeManagerModules/email` + `presets/secrets/email`).
+- [ ] `features/librewolf`, `features/zathura`, `features/dropbox`.
+- [ ] `features/restic` (from `nixosModules/restic`).
+- [ ] `features/wifi` (from `nixosModules/wifi` + nmconnection secrets).
+- [ ] `features/protonvpn` (from `nixosModules/protonvpn`).
+- [ ] `features/media-server` (from `nixosModules/media-server/{jellyfin,transmission,ripping}`).
+- [ ] `features/home-assistant` (from `nixosModules/home-assistant` + appdaemon apps).
+- [ ] Darwin (personal features on top of `core.lib.mkDarwinHost`): `features/darwin/homebrew`
+      (nix-homebrew + casks), `features/darwin/dock` (from `darwinModules/dock`),
+      `features/darwin/autorestic` (from `darwinModules/autorestic`), `features/darwin/window-mgmt`
+      (yabai/skhd/sketchybar/karabiner from `mbv-mba/nix-darwin` + `config/`), macOS system defaults.
+- [ ] Bring up hosts in order as their module set lands (hardware-configuration, disko, configuration,
+      per-host identity, deploy node): `mbv-workstation` → `mbv-desktop` → `mbv-xps13` → `hp-90` →
+      `mbv-mba` (last).
+- [ ] Wire deployment: `personal/deploy.nix` via `mkDeploy` (all 5 nodes), `justfile` (`switch`, `update`,
+      `rekey`, `deploy`, `edit-secret`, `nixos-anywhere`/`disko-install`), `policy.hujson` + Tailscale
+      ACL workflow, golden-test tooling.
+
+**Acceptance criteria**
+
+- All five hosts build from `personal` + `core`; deploy-rs works; secrets decrypt at activation.
+- `darwin-rebuild switch --flake .#mbv-mba` / deploy-rs works on the Mac.
+
+### M4 — Work repo scaffold (delivers Milestone 5)
+
+- [ ] Create `work/` (fresh; only input `core`), `work/hosts/work-laptop/` identity + `home.nix` via
+      `mkHomeConfig`, work-only agenix store + committed `rekeyed/`, `deploy.nix` + `justfile`.
+- [ ] Isolation audit: input graph is exactly `{core, nixpkgs→core}`; `mine.network.tailscale.enable`
+      false; `rg` / `nix eval` show no personal references.
+- [ ] Reserve nixos-wsl migration (module toggle, later).
+
+**Acceptance criteria**
+
+- `nix build .#homeConfigurations.<user>` succeeds from `work` + `core` only.
+
+### M5 — Hardening, CI, cleanup (delivers Milestone 6)
+
+- [ ] nixfmt-rfc-style + statix + deadnix in all three repos; CI (`nix flake check`) per repo; document
+      `--override-input core path:../core`.
+- [ ] Final sweep: per-host `autoUpgrade.flake` → leaf repo, drop dead code (`ephemeral` host, broken
+      `presets/nixos/server`), reconcile README/PLAN text with the darwin amendment, optionally update the
+      machine inventory (no laptop).
+
+**Acceptance criteria**
+
+- All three repos `nix flake check` green; a fresh-clone build of `personal` and `work` succeeds.
+
+## Migration notes
+
+- **Why one module at a time**: the old repo's modules are mostly sound; its problem is the
+  `local.*` / `flake-root` / `specialArgs` / preset wiring. Porting one module per item, each verified in
+  the new wiring, isolates legacy-wiring breakage to a single well-scoped change.
+- **Input ownership follows modules**: core pins nixpkgs, home-manager, nix-darwin, deploy-rs, agenix,
+  agenix-rekey, nix-auth, disko, impermanence, base16, fenix, hosts, direnv-instant (and nox). Personal
+  pins nix-homebrew + homebrew taps. Work pins nixos-wsl (later). This is an amendment to AD-6.
+- **`keys/builder_ed25519`** stays tracked (macOS linux-builder VM key; not security-sensitive).
+- **`ephemeral`** stays out of active config; its installer/ISO role can be rebuilt later on top of core.
