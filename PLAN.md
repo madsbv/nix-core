@@ -46,12 +46,13 @@ leaf proving cross-repo consumption.
       contents: imports of the options module + agenix wiring + minimal per-class base).
 - [x] Add representative feature modules to prove the pattern:
       - `features/dev/git.nix` (homeManager; reads `config.mine.user.*`)
-      - `features/dev/ssh.nix` (homeManager; reads `config.mine.user.email`)
+      - `features/dev/ssh.nix` (homeManager; minimal stub — email-driven signing/config is M2)
       - `features/shell.nix` (homeManager; zsh + starship + fzf/zoxide/eza/bat)
 - [x] Implement `lib/mkNixosHost.nix` (wires options + agenix + home-manager-as-module with
       `useGlobalPkgs`/`useUserPackages`, accepts `hostname`, `profiles`, `modules`, `identity`).
-- [x] Implement `lib/mkHomeConfig.nix` (standalone Home Manager; same HM modules + options module via
-      `home-manager.sharedModules`).
+- [x] Implement `lib/mkHomeConfig.nix` (standalone Home Manager; same HM modules + options module, wired
+      through the base profile's `homeManager.base` composite instead of `home-manager.sharedModules` — see
+      log entry `032e6cc`).
 - [x] Implement `lib/mkDarwinHost.nix` (shared NixOS/darwin wiring; full darwin-specific contents in M4).
 - [x] Create a throwaway `personal` host (`hosts/scaffold-test/`) that sets `mine.*`, imports core
       profiles, and builds via `mkNixosHost`; plus a throwaway standalone HM config built via
@@ -73,6 +74,28 @@ leaf proving cross-repo consumption.
 ## Implementation log
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
+
+### `68514b9` `c43b606` — agenix refactor, devShell input closure, README/PLAN reconciliation
+
+Review-driven cleanup addressing the five code/plan divergences noted at the end of M1:
+
+- **`modules/agenix.nix` refactored**: the nixos / homeManager / darwin rekey wiring was triplicated; the
+  shared config now lives in a single `mkAgenixModule` helper, parameterized by the per-class module
+  imports and a `hostKeyIdentityPaths` flag (only NixOS derives `age.identityPaths` from the openssh host
+  keys). No behavior change.
+- **`modules/devShell.nix` is curried over core's inputs** (`{ inputs }:` applied in `flake.nix` as
+  `(import ./modules/devShell.nix { inherit inputs; })`), matching the `agenix.nix` pattern. It previously
+  read `inputs` from the flake-parts module arguments, which would resolve to the *leaf's* inputs (no
+  deploy-rs / agenix-rekey) if the module were ever consumed downstream.
+- **Docs reconciled with the code** (the five divergence points from review):
+  - README: machine inventory updated to the real `mbv-*` naming (no planned laptop; `lapis` reserved);
+    the core layout no longer claims a `darwin/` directory (amendment: darwin-specific config lives in
+    personal); the builder/feature examples now show the actual consumption pattern
+    (`core.flakeModules.default` + `config.flake.*`); `nixfmt-rfc-style` → `nixfmt`.
+  - PLAN: migration-M1 status markers updated (throwaway-leaf verification was already done in `2f9d11b`);
+    M1's `ssh.nix` item is explicitly a stub, with email-driven signing/config staying on the M2 checklist;
+    M1's `mkHomeConfig` description reflects the base-composite wiring (`032e6cc`) rather than
+    `home-manager.sharedModules`.
 
 ### `2f9d11b` — Milestone 1 complete (throwaway leaves prove cross-repo consumption)
 
@@ -171,9 +194,9 @@ Goal: the shared development-tooling modules that all machines reuse.
         source strategy (decide in open questions; consider out-of-store symlink for hot reload).
       - `features/editors/nixvim.nix` (homeManager) — neovim via nixvim.
       - `features/editors/vscode.nix` (homeManager) — VS Code, extensions, settings.
-- [ ] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (read `mine.user.email` for signing/config),
-      `direnv.nix`, `toolchains.nix` (node/python/rust/linters/formatters/language servers), `docker.nix`
-      (system-level, nixos+darwin guarded).
+- [ ] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (extend the M1 stub to read `mine.user.email` for
+      signing key + per-host config), `direnv.nix`, `toolchains.nix` (node/python/rust/linters/formatters/
+      language servers), `docker.nix` (system-level, nixos+darwin guarded).
 - [ ] Shell (`features/shell.nix`): zsh/fish choice, starship prompt, completions.
 - [ ] Profiles (`modules/profiles/`): `shell`, `dev`, `editors` aggregates composed from the above.
 - [ ] Platform guards: any feature that differs between Linux and macOS uses `lib.mkIf` on the platform
@@ -383,8 +406,8 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 ### M1 — Core framework: replace the wiring (delivers Milestones 0–1)
 
 > Status: **in progress** — scaffolding, `options.nix`, `agenix.nix`, builders and proof feature files are
-> done (commit `ca41927`); `modules/system/*` and `modules/nixos/base.nix` ported content, color-scheme /
-> overlays / `pkgs`, and the throwaway-leaf verification remain.
+> done (commit `ca41927`); throwaway-leaf verification is done (`2f9d11b`). Still pending: `modules/system/*`
+> and `modules/nixos/base.nix` ported content, and color-scheme / overlays / `pkgs`.
 
 - [x] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
 - [x] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
@@ -404,10 +427,10 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 - [ ] Color-scheme (base16 + `molokai`), overlays, `pkgs` (nox et al.), core devShell, and the core-owned
       flake inputs (fenix, base16, hosts, direnv-instant, impermanence, disko, deploy-rs, agenix-rekey,
       nix-auth, nix-darwin). *(devShell + treefmt-nix done; rest pending.)*
-- [~] Proof modules: port `shell` (from `systemModules/shell`) and `git` / `ssh` (from
-      `homeManagerModules/{git,ssh}`, reading `mine.user.*`); verify a scratch NixOS host and a standalone
-      `mkHomeConfig` both evaluate. *(Proof feature files are written from scratch; leaf verification
-      pending.)*
+- [x] Proof modules: `shell`, `git`, and `ssh` feature files, plus a scratch NixOS host and a standalone
+      `mkHomeConfig`, verified in both `personal` and `work` (`2f9d11b`). *(Written from scratch rather than
+      ported from the old repo; `git` reads `mine.user.*`. `ssh` is a minimal stub here — its email-driven
+      signing/config stays on the M2 checklist.)*
 
 **Acceptance criteria**
 

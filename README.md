@@ -68,11 +68,15 @@ with:
 
 | Machine | Platform | Repo | Notes |
 | --- | --- | --- | --- |
-| Desktop | NixOS (x86_64-linux) | personal | graphical workstation |
-| Laptop | NixOS (x86_64-linux) | personal | graphical, portable |
-| Home server(s) | NixOS (x86_64-linux / aarch64-linux) | personal | headless, `server` profile |
-| Mac | nix-darwin (aarch64-darwin) | personal | personal machine |
+| `mbv-workstation` | NixOS (x86_64-linux) | personal | graphical workstation |
+| `mbv-desktop` | NixOS (x86_64-linux) | personal | media server + CUDA |
+| `mbv-xps13` / `hp-90` | NixOS (x86_64-linux) | personal | headless laptop-servers, `server` profile |
+| `mbv-mba` | nix-darwin (aarch64-darwin) | personal | personal machine |
 | Work laptop | Home Manager standalone (today), nixos-wsl (next) | work | work-only config |
+
+No dedicated laptop is planned; `lapis` is reserved for a future machine. Hostnames are kept as-is to
+preserve host keys, `rekeyed/` paths, deploy-rs config, tailnet identity, and DNS (see the migration
+notes in PLAN.md).
 
 ---
 
@@ -84,7 +88,7 @@ with:
 | AD-2 | **Core contains no hosts, no identity, no secrets** | Keeps core forkable/public-able, and makes the sharing boundary auditable. |
 | AD-3 | **flake-parts + dendritic feature modules** | Every `.nix` file (except entry points) is a flake-parts module; features span NixOS + nix-darwin + Home Manager in one file. This is the community's answer to cross-class sharing. Modules auto-loaded with import-tree. |
 | AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.user.*`, `mine.location.*`, `mine.network.tailscale.enable`, ...) with no defaults. Feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
-| AD-5 | **Thin builder library, plus raw module exports** | Core exports both `lib.mkNixosHost` / `mkDarwinHost` / `mkHomeConfig` / `mkDeploy` (encapsulating all wiring) **and** the raw `nixosModules` / `darwinModules` / `homeManagerModules` sets, so leaves can drop to raw modules when they need to. |
+| AD-5 | **Thin builder library, plus class-keyed module registry** | Core exports the builders (`config.flake.lib.mkNixosHost` / `mkDarwinHost` / `mkHomeConfig` / `mkDeploy`, encapsulating all wiring) **and** the per-class module registry (`config.flake.modules.{nixos,homeManager,darwin}.*`), so leaves can drop to raw modules when they need to. |
 | AD-6 | **Version pinning owned by core** | Leaves follow `core/nixpkgs`; core's builders reference core-pinned home-manager / nix-darwin / agenix-rekey / deploy-rs / nixos-wsl. One lock to update, no drift between personal and work. |
 | AD-7 | **Secrets: agenix-rekey, per leaf** | Keeps the existing YubiKey master-key workflow. Generators + dummy-pubkey bootstrap suit home servers. Core wires the *mechanism*; each leaf owns its encrypted files, `secrets.nix`, and `rekeyed/` outputs. |
 | AD-8 | **Deployment: deploy-rs, per leaf** | deploy-rs deploys NixOS **and** standalone Home Manager profiles over SSH; per-leaf `deploy` output keeps work and personal deployment fully separate. `nixos-anywhere` + disko for server bootstrap. |
@@ -97,25 +101,30 @@ with:
 
 ```
 core/
-├── flake.nix                 # thin entry point; flake-parts + import-tree
+├── flake.nix                 # thin entry point; flake-parts + curried framework/devShell
 ├── modules/
-│   ├── flake-module.nix      # registers flake-parts + auto module loader
+│   ├── flake-module.nix      # framework: flake-parts + auto module loader + builders
 │   ├── options.nix           # declares mine.* options (no defaults)
-│   ├── agenix.nix            # wires agenix-rekey module (nixos + homeManager), rekey options
+│   ├── agenix.nix            # agenix(-rekey) wiring, per class (nixos + homeManager + darwin)
 │   ├── base.nix              # composites: nixos.base / darwin.base / homeManager.base
-│   ├── profiles/             # role aggregates: shell, dev, editors, desktop, server, headless
+│   ├── treefmt.nix           # nixfmt / statix / deadnix, wired into `nix flake check`
+│   ├── devShell.nix          # core dev shell (curried over core's inputs)
+│   ├── profiles/             # role aggregates: base, shell, dev, editors, desktop, server, headless
 │   ├── features/             # cross-class features, one file per capability
 │   │   ├── editors/          #   emacs.nix, nixvim.nix, vscode.nix
 │   │   ├── dev/              #   git.nix, gh.nix, ssh.nix, direnv.nix, toolchains
 │   │   ├── shell.nix         #   zsh/fish + starship + fzf/zoxide/eza/bat
-│   │   ├── network.nix       #   platform-guarded network base
 │   │   ├── tailscale.nix     #   nixos service + hm cli (default off)
-│   │   └── desktop.nix       #   compositor/WM, platform-guarded
-│   ├── nixos/                # boot, users, disko, impermanence, services (nixos-only)
-│   └── darwin/               # homebrew, aerospace, system defaults (darwin-only)
+│   │   ├── yubikey.nix       #   (migration M2)
+│   │   ├── laptop.nix        #   reserved for a future laptop (migration M2)
+│   │   └── desktop.nix       #   generic desktop bits, platform-guarded
+│   ├── system/               # core-bound system modules: keys, builder, users, update-diff (M1)
+│   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...) (M1)
+│   # (no darwin/: darwin-specific config lives in personal — see the migration amendment)
 ├── lib/                      # builder functions + deploy integration
+│   ├── load.nix              # import-tree auto-loader
 │   ├── mkNixosHost.nix
-│   ├── mkDarwinHost.nix
+│   ├── mkDarwinHost.nix      # shared NixOS/darwin wiring only; no darwin system modules
 │   ├── mkHomeConfig.nix
 │   └── mkDeploy.nix
 ├── pkgs/                     # shared custom packages
@@ -135,16 +144,35 @@ A single feature file contributes to whichever module classes it touches. Exampl
 }
 ```
 
-Hosts (in leaves) compose features/profiles by importing `core.nixosModules.<x>` /
-`core.homeManagerModules.<x>` through the builders, e.g.:
+Leaves consume the framework by importing `core.flakeModules.default`, then compose profiles/features
+through the builders from `config.flake.*`. The leaf entry point:
 
 ```nix
-core.lib.mkNixosHost {
-  system = "x86_64-linux";
-  hostname = "aurora";
-  profiles = [ core.profiles.base core.profiles.desktop core.profiles.dev ];
-  modules = [ ./hosts/aurora/hardware.nix ./features/vpn.nix ];
-};
+# personal/flake.nix (leaf entry point)
+outputs = inputs@{ self, core, flake-parts, ... }:
+  flake-parts.lib.mkFlake { inherit inputs; } {
+    imports = [ core.flakeModules.default ./hosts ];
+  };
+```
+
+Hosts then compose class-keyed profiles and features, e.g.:
+
+```nix
+# personal/hosts/mbv-workstation/default.nix
+{ config, ... }:
+{
+  flake.nixosConfigurations.mbv-workstation = config.flake.lib.mkNixosHost {
+    system = "x86_64-linux";
+    hostname = "mbv-workstation";
+    profiles = [
+      config.flake.profiles.base
+      config.flake.profiles.desktop
+      config.flake.profiles.dev
+    ];
+    modules = [ ./hardware.nix ../features/vpn.nix ];
+    identity = [ ./identity.nix ];
+  };
+}
 ```
 
 ### Identity (`mine.*`)
@@ -156,9 +184,10 @@ Core declares options such as:
 - `mine.location.timezone`, `mine.location.latitude`, `mine.location.longitude`
 - `mine.network.tailscale.enable`
 
-Each leaf host supplies an `identity.nix` that sets these. Builders always prepend the options module
-to every evaluation (including `home-manager.sharedModules` for nested and standalone Home Manager) so
-the options are always declared. Leaves may freely override; core defaults use `lib.mkDefault`.
+Each leaf host supplies an `identity.nix` that sets these. Every evaluation gets the options module via
+the per-class base composite (`config.flake.modules.{nixos,homeManager,darwin}.base`), which the builders
+include by default in both integrated and standalone Home Manager — no `specialArgs` or `sharedModules`
+plumbing. Leaves may freely override; core defaults use `lib.mkDefault`.
 
 ### Secrets flow (agenix-rekey)
 
@@ -198,7 +227,7 @@ the options are always declared. Leaves may freely override; core defaults use `
 - **Local dev loop against core**: `--override-input core path:../core` on any build/deploy command.
 - **Check**: `nix flake check` in each repo. Core is checkable without any secrets; leaves build the
   already-rekeyed `rekeyed/` outputs, so builds stay pure.
-- **Formatting/linting**: `nixfmt-rfc-style`, `statix`, `deadnix`.
+- **Formatting/linting**: `nixfmt` (RFC style), `statix`, `deadnix`.
 
 ### Known friction
 
