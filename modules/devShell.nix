@@ -9,7 +9,7 @@
           just
           age
           age-plugin-yubikey
-          nixfmt-rfc-style
+          nixfmt
           statix
           deadnix
           inputs.deploy-rs.packages.${system}.default
