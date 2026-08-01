@@ -1,6 +1,5 @@
 { inputs }:
-_:
-{
+_: {
   flake.modules = {
     # NixOS: agenix + agenix-rekey wiring. Consumed by the builders and the
     # base composite; active only when `mine.agenix.enable` is true.
