@@ -7,15 +7,18 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
 ## Milestone 0 — Bootstrap scaffolding
 
+> Status: **done** — commits `105277d`, `58b64fb`; verified via `nix flake show` / `nix flake check`.
+
 Goal: three valid, evaluable flakes in sibling directories with the right input topology, proving that
 a leaf can consume `core` as an input.
 
-- [ ] `core/flake.nix` declares all inputs (nixpkgs, flake-parts, home-manager, nix-darwin,
-      agenix-rekey, nixos-wsl, deploy-rs), each following core's nixpkgs where applicable.
-- [ ] `core/flake.lock` is generated (`nix flake lock`) so all inputs are pinned.
-- [ ] `personal/flake.nix` and `work/flake.nix` declare only `core` (+ `nixpkgs.follows = "core/nixpkgs"`).
-- [ ] Each directory is a git repo with a `.gitignore` (`/result`, `.direnv/`).
-- [ ] `nix flake check` passes in `core`; `nix flake metadata` works in `personal` and `work`.
+- [x] `core/flake.nix` declares all inputs (nixpkgs, flake-parts, home-manager, nix-darwin,
+      agenix-rekey, nixos-wsl, deploy-rs, agenix, treefmt-nix), each following core's nixpkgs where
+      applicable.
+- [x] `core/flake.lock` is generated (`nix flake lock`) so all inputs are pinned.
+- [x] `personal/flake.nix` and `work/flake.nix` declare only `core` (+ `nixpkgs.follows = "core/nixpkgs"`).
+- [x] Each directory is a git repo with a `.gitignore` (`/result`, `.direnv/`).
+- [x] `nix flake check` passes in `core`; `nix flake metadata` works in `personal` and `work`.
 
 **Acceptance criteria**
 
@@ -26,28 +29,33 @@ a leaf can consume `core` as an input.
 
 ## Milestone 1 — Core module framework
 
+> Status: **in progress** — framework scaffolded and green in core (commit `ca41927`); throwaway leaf
+> proof (NixOS host + standalone HM) still pending. See [Implementation log](#implementation-log).
+
 Goal: the flake-parts + dendritic skeleton with identity options and auto-loading, plus a throwaway
 leaf proving cross-repo consumption.
 
-- [ ] Add `import-tree`-style auto-loader (files under `modules/` become flake-parts modules; files
-      starting with `_` are treated as helpers and skipped).
-- [ ] Declare the `mine.*` option namespace in `modules/options.nix` (no defaults):
+- [x] Add `import-tree`-style auto-loader (`lib/load.nix`; files under `modules/` become flake-parts
+      modules; files starting with `_` are treated as helpers and skipped).
+- [x] Declare the `mine.*` option namespace in `modules/options.nix` (no defaults):
       `mine.hostName`, `mine.user.{username,fullName,email}`, `mine.location.{timezone,latitude,longitude}`,
-      `mine.network.tailscale.enable`.
-- [ ] Add `modules/base.nix` composing `nixos.base` / `darwin.base` / `homeManager.base` (initial
+      `mine.network.tailscale.enable`, plus `mine.agenix.{enable,masterIdentities,hostPubkey,
+      localStorageDir,generatedSecretsDir}`.
+- [x] Add `modules/base.nix` composing `nixos.base` / `darwin.base` / `homeManager.base` (initial
       contents: imports of the options module + agenix wiring + minimal per-class base).
-- [ ] Add two representative feature modules to prove the pattern:
+- [x] Add representative feature modules to prove the pattern:
       - `features/dev/git.nix` (homeManager; reads `config.mine.user.*`)
+      - `features/dev/ssh.nix` (homeManager; reads `config.mine.user.email`)
       - `features/shell.nix` (homeManager; zsh + starship + fzf/zoxide/eza/bat)
-- [ ] Implement `lib/mkNixosHost.nix` (wires options + agenix + home-manager-as-module with
+- [x] Implement `lib/mkNixosHost.nix` (wires options + agenix + home-manager-as-module with
       `useGlobalPkgs`/`useUserPackages`, accepts `hostname`, `profiles`, `modules`, `identity`).
-- [ ] Implement `lib/mkHomeConfig.nix` (standalone Home Manager; same HM modules + options module via
+- [x] Implement `lib/mkHomeConfig.nix` (standalone Home Manager; same HM modules + options module via
       `home-manager.sharedModules`).
-- [ ] Implement `lib/mkDarwinHost.nix` (stub wiring; full contents in M4).
-- [ ] Create a throwaway `personal` host (`hosts/scaffold-test/`) that sets `mine.*`, imports core
+- [x] Implement `lib/mkDarwinHost.nix` (shared NixOS/darwin wiring; full darwin-specific contents in M4).
+- [~] Create a throwaway `personal` host (`hosts/scaffold-test/`) that sets `mine.*`, imports core
       profiles, and builds via `mkNixosHost`; plus a throwaway standalone HM config built via
-      `mkHomeConfig`. Verify both evaluate.
-- [ ] Add `lib/mkDeploy.nix` scaffolding (empty `deploy` output + `deployChecks`), wired into leaves.
+      `mkHomeConfig`. Verify both build.
+- [x] Add `lib/mkDeploy.nix` scaffolding (`deploy` + `deployChecks`); leaf wiring lands with the leaf.
 
 **Acceptance criteria**
 
@@ -56,6 +64,56 @@ leaf proving cross-repo consumption.
 - `nix build .#nixosConfigurations.scaffold-test` (in the throwaway leaf) and
   `nix build .#homeConfigurations.scaffold-hm` both succeed.
 - `nix flake check` passes in core and the throwaway leaf.
+
+---
+
+## Implementation log
+
+Running record of what was built and the decisions discovered while doing it. Newest entries on top.
+
+### `ca41927` — core framework scaffold (Milestone 0 + migration M1 framework part)
+
+Verified with `nix flake show` + `nix flake check` in `core` (x86_64-linux).
+
+- `flake.nix`: inputs include `agenix` and `treefmt-nix` (both follow `nixpkgs`); exports
+  `flake.flakeModules.default` = the framework module, closed over core's pinned `inputs`.
+- `modules/flake-module.nix`: the self-contained flake-parts module. Imports
+  `flake-parts.flakeModules.modules`, `home-manager.flakeModules.default`, `nix-darwin.flakeModules.default`,
+  `agenix.nix`, `base.nix`, and auto-loaded `features/` + `profiles/` trees. Declares
+  `options.flake.{profiles,lib,deploy,flakeModules}` and instantiates the builders into `config.flake.lib`.
+- `lib/load.nix`: curried auto-loader `{ skip ? ... } : { dir } : [ modules... ]`; `_`-prefixed files
+  skipped; deterministic sorted traversal.
+- `modules/options.nix`: `mine.*` + `mine.agenix.*` as in M1. No defaults; `masterIdentities` gets a
+  placeholder default (`[{ identity = "/dev/null"; }]`) so agenix-rekey's unconditional assertion passes
+  before the leaf enables agenix.
+- `modules/agenix.nix`: per-class modules under `flake.modules.{nixos,homeManager,darwin}.agenix`, each
+  importing `inputs.agenix.<class>.age` + `inputs.agenix-rekey.<class>.agenix-rekey`. Runtime wiring is
+  gated on `mine.agenix.enable`; `age.rekey.masterIdentities` is always set (`lib.mkDefault`).
+- `lib/mkNixosHost.nix`, `lib/mkHomeConfig.nix`, `lib/mkDarwinHost.nix`, `lib/mkDeploy.nix`: builders
+  read `config.flake.modules` / `config.flake.profiles` (no hardcoded core paths). `home.stateVersion`
+  defaulted `"25.05"`; standalone HM sets `home.username` / `home.homeDirectory` explicitly (no defaults
+  for stateVersion ≥ 20.09).
+- `modules/treefmt.nix` + `modules/devShell.nix`: treefmt-nix (`nixfmt`, `deadnix`, `statix`; `nixfmt` is
+  rfc-style in current nixpkgs) wired into `nix flake check`; devShell with git, just, age,
+  age-plugin-yubikey, nixfmt-rfc-style, statix, deadnix, deploy-rs, agenix-rekey.
+
+Gotchas / decisions (feed into README/PLAN text where relevant):
+
+- `lib.mkIf` is **not** allowed directly in a module's `imports` list ("expected a list but found a set").
+  Conditional wiring goes inside the module body (`config.age = lib.mkMerge [ ... (lib.mkIf ...) ]`).
+- flake-parts already declares `flake.checks` (transposed per-system, `lazyAttrsOf package`); do **not**
+  redeclare it. Leaves wire deploy-checks through `perSystem.checks` instead.
+- Flake files must be git-tracked before evaluation ("Path … is not tracked by Git").
+- treefmt caches (`~/.cache/treefmt`); after changing formatter config, clear the cache or `nix fmt`
+  will skip files and disagree with `nix flake check`.
+
+Remaining for Milestone 1:
+
+- Personal leaf scaffold: flake-parts flake importing `inputs.core.flakeModules.default`;
+  `hosts/scaffold-test/` (mkNixosHost) + `homeConfigurations.scaffold-hm` (mkHomeConfig); deploy wired
+  via `mkDeploy`; `justfile`; then `nix build` both configs and `nix flake check` the leaf.
+- Work leaf scaffold (migration M4): HM-only `homeConfigurations.<user>`.
+- Final leaf commits + regenerated leaf locks (leaves pin the committed core path).
 
 ---
 
@@ -279,11 +337,15 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 
 ### M1 — Core framework: replace the wiring (delivers Milestones 0–1)
 
-- [ ] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
-- [ ] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
+> Status: **in progress** — scaffolding, `options.nix`, `agenix.nix`, builders and proof feature files are
+> done (commit `ca41927`); `modules/system/*` and `modules/nixos/base.nix` ported content, color-scheme /
+> overlays / `pkgs`, and the throwaway-leaf verification remain.
+
+- [x] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
+- [x] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
       location.{timezone,latitude,longitude}, network.tailscale.enable), ported from `systemModules/common`
-      + `homeManagerModules/user-profile`.
-- [ ] `modules/agenix.nix` — rekey mechanism from `systemModules/yubikey-agenix-rekey`; options
+      + `homeManagerModules/user-profile`. (Plus `mine.agenix.*`.)
+- [x] `modules/agenix.nix` — rekey mechanism from `systemModules/yubikey-agenix-rekey`; options
       `masterIdentities` / `hostPubkey` / `localStorageDir` / `generatedSecretsDir` supplied by the leaf.
 - [ ] `modules/system/*` — keys, builder, users framework (rewritten around `mine.user.*` + per-host user
       list; provides home-manager wiring + agenix id-key provisioning), update-diff, register-flake,
@@ -291,15 +353,16 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 - [ ] `modules/nixos/base.nix` — from `nixosModules/common`: networking/firewall/nameservers, systemd
       tweaks, openssh, zfs, impermanence base, autoUpgrade (flake URL from leaf), programs, sudo, user
       defaults. Personal secret paths (restic/wifi) stripped.
-- [ ] Base composites + builders: `modules/base.nix` (nixos.base + homeManager.base),
+- [x] Base composites + builders: `modules/base.nix` (nixos.base + homeManager.base),
       `lib/mkNixosHost.nix`, `lib/mkDarwinHost.nix` (small, shared wiring), `lib/mkHomeConfig.nix`,
       `lib/mkDeploy.nix`.
 - [ ] Color-scheme (base16 + `molokai`), overlays, `pkgs` (nox et al.), core devShell, and the core-owned
       flake inputs (fenix, base16, hosts, direnv-instant, impermanence, disko, deploy-rs, agenix-rekey,
-      nix-auth, nix-darwin).
-- [ ] Proof modules: port `shell` (from `systemModules/shell`) and `git` / `ssh` (from
+      nix-auth, nix-darwin). *(devShell + treefmt-nix done; rest pending.)*
+- [~] Proof modules: port `shell` (from `systemModules/shell`) and `git` / `ssh` (from
       `homeManagerModules/{git,ssh}`, reading `mine.user.*`); verify a scratch NixOS host and a standalone
-      `mkHomeConfig` both evaluate.
+      `mkHomeConfig` both evaluate. *(Proof feature files are written from scratch; leaf verification
+      pending.)*
 
 **Acceptance criteria**
 
@@ -388,7 +451,8 @@ before the next item.
   `local.*` / `flake-root` / `specialArgs` / preset wiring. Porting one module per item, each verified in
   the new wiring, isolates legacy-wiring breakage to a single well-scoped change.
 - **Input ownership follows modules**: core pins nixpkgs, home-manager, nix-darwin, deploy-rs, agenix,
-  agenix-rekey, nix-auth, disko, impermanence, base16, fenix, hosts, direnv-instant (and nox). Personal
-  pins nix-homebrew + homebrew taps. Work pins nixos-wsl (later). This is an amendment to AD-6.
+  agenix-rekey, treefmt-nix, nix-auth, disko, impermanence, base16, fenix, hosts, direnv-instant (and
+  nox). Personal pins nix-homebrew + homebrew taps. Work pins nixos-wsl (later). This is an amendment to
+  AD-6.
 - **`keys/builder_ed25519`** stays tracked (macOS linux-builder VM key; not security-sensitive).
 - **`ephemeral`** stays out of active config; its installer/ISO role can be rebuilt later on top of core.
