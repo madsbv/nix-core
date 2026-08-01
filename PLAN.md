@@ -456,3 +456,33 @@ before the next item.
   AD-6.
 - **`keys/builder_ed25519`** stays tracked (macOS linux-builder VM key; not security-sensitive).
 - **`ephemeral`** stays out of active config; its installer/ISO role can be rebuilt later on top of core.
+
+## Notes from the parallel implementation
+
+These capture ideas and findings surfaced while reviewing a parallel implementation of the
+same architecture. They are written as ideas and motivations, not as concrete code or module
+names, so they can be evaluated on their own merits.
+
+- **Mirror identity values into the Home Manager evaluation.** On NixOS/nix-darwin hosts,
+  Home Manager evaluates in its own module system: values set for `mine.*` in the system
+  evaluation are not visible to feature modules inside the HM evaluation. The host wiring
+  must explicitly re-define the `mine.*` values in the HM evaluation, mirroring the system
+  values, for value-driven features (AD-4) to work in integrated mode. Consider generating
+  the mirrored field list from the declared options rather than hard-coding it, so that
+  adding a new `mine.*` subtree flows through automatically. Motivation: identity injection
+  only functions in the integrated HM path if this copy exists, and a hard-coded copy list
+  drifts silently.
+- **Builders as flake-parts modules.** The builders are currently plain library functions
+  with their dependencies threaded in from the framework module. An alternative style is to
+  implement each builder as a flake-parts module itself, so it receives the flake's
+  assembled outputs and can reference complete per-class module sets directly — e.g. attach
+  every Home Manager module of a class in one step — and be auto-discovered when added.
+  Motivation: this removes the manual dependency threading in the framework module and keeps
+  builders automatically in sync with whatever the framework registers; the trade-off is
+  that the builders then only exist inside a flake-parts evaluation.
+- **Port by semantics, not by wiring.** When porting an old module, judge it on its contents
+  and what it configures, not on whether it currently builds or what its preset/wrapper
+  plumbing looks like — that wiring is being replaced wholesale. Decide each module's
+  destination (core base / core feature / leaf / drop) from its semantics, then port its
+  content. Motivation: modules entangled in legacy plumbing are often still sound; dropping
+  them because of a broken wrapper loses working functionality.
