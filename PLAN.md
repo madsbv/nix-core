@@ -29,8 +29,9 @@ a leaf can consume `core` as an input.
 
 ## Milestone 1 — Core module framework
 
-> Status: **in progress** — framework scaffolded and green in core (commit `ca41927`); throwaway leaf
-> proof (NixOS host + standalone HM) still pending. See [Implementation log](#implementation-log).
+> Status: **done** — framework scaffolded and green in core (`ca41927` → `2f9d11b`); throwaway
+> `personal` and `work` leaves both build and pass `nix flake check`. See
+> [Implementation log](#implementation-log).
 
 Goal: the flake-parts + dendritic skeleton with identity options and auto-loading, plus a throwaway
 leaf proving cross-repo consumption.
@@ -52,24 +53,72 @@ leaf proving cross-repo consumption.
 - [x] Implement `lib/mkHomeConfig.nix` (standalone Home Manager; same HM modules + options module via
       `home-manager.sharedModules`).
 - [x] Implement `lib/mkDarwinHost.nix` (shared NixOS/darwin wiring; full darwin-specific contents in M4).
-- [~] Create a throwaway `personal` host (`hosts/scaffold-test/`) that sets `mine.*`, imports core
+- [x] Create a throwaway `personal` host (`hosts/scaffold-test/`) that sets `mine.*`, imports core
       profiles, and builds via `mkNixosHost`; plus a throwaway standalone HM config built via
-      `mkHomeConfig`. Verify both build.
+      `mkHomeConfig`. Verify both build. Same for `work` (HM-only, `homeConfigurations.work`).
 - [x] Add `lib/mkDeploy.nix` scaffolding (`deploy` + `deployChecks`); leaf wiring lands with the leaf.
 
 **Acceptance criteria**
 
 - A single core feature file produces a Home Manager module usable in both a NixOS-integrated HM and a
   standalone `homeConfigurations` build, reading the same `mine.*` values.
-- `nix build .#nixosConfigurations.scaffold-test` (in the throwaway leaf) and
-  `nix build .#homeConfigurations.scaffold-hm` both succeed.
-- `nix flake check` passes in core and the throwaway leaf.
+- `nix build .#nixosConfigurations.scaffold-test.config.system.build.toplevel` (in `personal`) and
+  `nix build .#homeConfigurations.scaffold-hm.activationPackage` (in `personal` and `work`) succeed.
+  Note: the short forms `nix build .#nixosConfigurations.<host>` / `.#homeConfigurations.<user>` fail on
+  this nix/nixpkgs pairing ("`type` is not a string but a set") — see implementation log.
+- `nix flake check` passes in core and both throwaway leaves.
 
 ---
 
 ## Implementation log
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
+
+### `2f9d11b` — Milestone 1 complete (throwaway leaves prove cross-repo consumption)
+
+Core commits in this stretch: `ca2d806` (mirror whole `mine.*` into integrated HM evals), `8934a88`
+(devShell uses `nixfmt`, not `nixfmt-rfc-style`), `3fac1c0` (parallel-implementation notes), `eab06ee`
+(agenix closure over core's inputs), `dbe2236` (nixfmt on `agenix.nix`), `032e6cc` (builders
+single-source wiring via the base profile), `2f9d11b` (git feature uses `programs.git.settings`).
+
+- `personal` and `work` are flake-parts leaves: `outputs = inputs@{ self, core, flake-parts, ... }`,
+  `flake-parts.lib.mkFlake { inherit inputs; } { imports = [ core.flakeModules.default ./hosts ... ]; }`.
+  Direct inputs are exactly `core`, `nixpkgs → core/nixpkgs`, `flake-parts → core/flake-parts`.
+- `personal/hosts/scaffold-test/` via `mkNixosHost` (NixOS toplevel builds; a minimal non-bootable
+  module satisfies the fileSystems/bootloader/stateVersion assertions) + `personal/home/scaffold-hm` and
+  `work/hosts/work-laptop` via `mkHomeConfig`. All three read the same core git/ssh/shell features;
+  `mine.user.email` resolves per-leaf (`scaffold@example.com`, `work@example.com`).
+- Acceptance verified: `nix build` of the NixOS toplevel and both HM `activationPackage`s, plus
+  `nix flake check` in all three repos.
+
+Decisions / gotchas discovered (fed into README/PLAN text where relevant):
+
+- **Nix 2.34 lock bug**: `outputs = { self, inputs, ... }` (bare `inputs` in the pattern) breaks
+  `nix flake lock` with `error: cannot find flake 'flake:inputs' in the flake registries`. Use the
+  `inputs@{ ... }` @-pattern instead.
+- **flake-parts `mkFlake` takes an attrset module**, not a list: `{ imports = [...]; }`. A list gets
+  wrapped by `setDefaultModuleLocation` into nested `imports` → "Module imports can't be nested lists".
+- **Path-input lock staleness**: `nix flake lock` adds new inputs but does not re-hash existing path
+  inputs; after every core commit, leaves need `nix flake update core` before evaluation picks up changes.
+- **`nix build .#nixosConfigurations.<host>` and `.#homeConfigurations.<user>` short forms fail** on this
+  nix (2.34) / nixpkgs pairing: nix reads `.type` expecting a string, but `nixosSystem` and
+  `homeManagerConfiguration` results carry `_type = "configuration"` and a `type` *set*. Reproduced with
+  a plain `nixpkgs.lib.nixosSystem` flake, so it is not a framework bug. Use the explicit targets
+  `.config.system.build.toplevel` / `.activationPackage` (what `nixos-rebuild` / HM use anyway).
+- **`modules/agenix.nix` is curried over core's inputs** (`{ inputs }: _: { ... }`, applied in
+  `flake-module.nix` as `(import ./agenix.nix { inherit inputs; })`): a module's `inputs` argument is the
+  *leaf's* inputs when the framework is consumed as a flake module, so `inputs.agenix` from inside a
+  module resolved to nothing in leaf evals.
+- **Builders single-source wiring**: `mkNixosHost`/`mkDarwinHost`/`mkHomeConfig` default to
+  `profiles ? [ baseProfile ]` and no longer wire the options/agenix modules directly — the base
+  composite is the only place they're imported. Direct wiring caused duplicate option declarations
+  ("`rekey.secrets` is already declared").
+- **Integrated HM mirrors the whole `mine` subtree** via `{ inherit (config) mine; }` prepended to the
+  user's HM `imports`, so new `mine.*` fields flow into integrated HM evals automatically.
+- **home-manager git feature uses `programs.git.settings`** (`user.name`, `user.email`, …); the obsolete
+  `userName`/`userEmail`/`extraConfig` aliases carry deprecation traces.
+- treefmt gotcha re-confirmed: untracked files fail the sandboxed `nix flake check` until staged; clear
+  `~/.cache/treefmt` after formatter config changes.
 
 ### `ca41927` — core framework scaffold (Milestone 0 + migration M1 framework part)
 
@@ -109,11 +158,7 @@ Gotchas / decisions (feed into README/PLAN text where relevant):
 
 Remaining for Milestone 1:
 
-- Personal leaf scaffold: flake-parts flake importing `inputs.core.flakeModules.default`;
-  `hosts/scaffold-test/` (mkNixosHost) + `homeConfigurations.scaffold-hm` (mkHomeConfig); deploy wired
-  via `mkDeploy`; `justfile`; then `nix build` both configs and `nix flake check` the leaf.
-- Work leaf scaffold (migration M4): HM-only `homeConfigurations.<user>`.
-- Final leaf commits + regenerated leaf locks (leaves pin the committed core path).
+Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wiring deferred to M3/M5.
 
 ---
 
@@ -193,8 +238,8 @@ Goal: the Mac host fully working, exercising the darwin side of the framework.
 Goal: work laptop builds from core alone; today HM-only, migrates to nixos-wsl.
 
 - [ ] `work/features/`: work-specific programs, policies, and VPN.
-- [ ] `work/hosts/work-laptop/`: identity (work email/name/signing key), `home.nix` (HM-only profile
-      via `mkHomeConfig`).
+- [x] `work/hosts/work-laptop/`: throwaway identity + HM-only profile via `mkHomeConfig` (built and green
+      in M1); real work email/name/signing key land with `work/features/`.
 - [ ] `work/secrets/`: work-only agenix-rekey store.
 - [ ] `work/deploy.nix` + `justfile`.
 - [ ] Isolation audit: confirm work's inputs are only core; run `rg`/`nix eval` checks that no personal
@@ -233,8 +278,8 @@ cd core && nix flake check && nix flake show
 
 # leaf (personal / work) — after M1
 cd personal && nix flake check
-nix build .#nixosConfigurations.<host>
-nix build .#homeConfigurations.<user>
+nix build .#nixosConfigurations.<host>.config.system.build.toplevel
+nix build .#homeConfigurations.<user>.activationPackage
 nix run nixpkgs#nixos-rebuild -- build --flake .#<host>
 
 # secrets (M3+)
