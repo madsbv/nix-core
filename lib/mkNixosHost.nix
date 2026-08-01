@@ -1,15 +1,13 @@
 {
   inputs,
   lib,
-  optionsModule,
-  agenixNixosModule,
-  agenixHomeManagerModule,
   homeManagerModule,
+  baseProfile,
 }:
 {
   system,
   hostname,
-  profiles ? [ ],
+  profiles ? [ baseProfile ],
   modules ? [ ],
   identity ? [ ],
 }:
@@ -53,10 +51,6 @@ let
       home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
-        sharedModules = [
-          optionsModule
-          agenixHomeManagerModule
-        ];
         users.${user}.imports = [
           # Home Manager evaluates in its own module system: the `mine.*`
           # values set here in the system evaluation are not visible inside it.
@@ -80,9 +74,7 @@ inputs.nixpkgs.lib.nixosSystem {
     {
       networking.hostName = lib.mkDefault hostname;
     }
-    optionsModule
     homeManagerModule
-    agenixNixosModule
     userWiring
   ]
   ++ profilesNixos

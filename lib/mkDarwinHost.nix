@@ -1,15 +1,13 @@
 {
   inputs,
   lib,
-  optionsModule,
-  agenixDarwinModule,
-  agenixHomeManagerModule,
   homeManagerDarwinModule,
+  baseProfile,
 }:
 {
   system,
   hostname,
-  profiles ? [ ],
+  profiles ? [ baseProfile ],
   modules ? [ ],
   identity ? [ ],
 }:
@@ -44,10 +42,6 @@ let
     in
     {
       home-manager = {
-        sharedModules = [
-          optionsModule
-          agenixHomeManagerModule
-        ];
         users.${user}.imports = [
           # Mirror the system evaluation's `mine.*` values into the nested
           # Home Manager evaluation (see lib/mkNixosHost.nix).
@@ -69,9 +63,7 @@ inputs.nix-darwin.lib.darwinSystem {
     {
       networking.hostName = lib.mkDefault hostname;
     }
-    optionsModule
     homeManagerDarwinModule
-    agenixDarwinModule
     userWiring
   ]
   ++ profilesDarwin

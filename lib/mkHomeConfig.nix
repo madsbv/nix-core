@@ -1,14 +1,13 @@
 {
   inputs,
   lib,
-  optionsModule,
-  agenixHomeManagerModule,
+  baseProfile,
 }:
 {
   system,
   username,
   homeDirectory ? "/home/${username}",
-  profiles ? [ ],
+  profiles ? [ baseProfile ],
   modules ? [ ],
   identity ? [ ],
 }:
@@ -19,8 +18,6 @@ in
 inputs.home-manager.lib.homeManagerConfiguration {
   inherit pkgs;
   modules = [
-    optionsModule
-    agenixHomeManagerModule
     {
       home = {
         inherit username homeDirectory;

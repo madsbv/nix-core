@@ -16,23 +16,18 @@ let
 
   mkNixosHost = import ../lib/mkNixosHost.nix {
     inherit inputs lib;
-    optionsModule = ./options.nix;
-    agenixNixosModule = config.flake.modules.nixos.agenix;
-    agenixHomeManagerModule = config.flake.modules.homeManager.agenix;
+    baseProfile = config.flake.profiles.base;
     homeManagerModule = inputs.home-manager.nixosModules.home-manager;
   };
 
   mkHomeConfig = import ../lib/mkHomeConfig.nix {
     inherit inputs lib;
-    optionsModule = ./options.nix;
-    agenixHomeManagerModule = config.flake.modules.homeManager.agenix;
+    baseProfile = config.flake.profiles.base;
   };
 
   mkDarwinHost = import ../lib/mkDarwinHost.nix {
     inherit inputs lib;
-    optionsModule = ./options.nix;
-    agenixDarwinModule = config.flake.modules.darwin.agenix;
-    agenixHomeManagerModule = config.flake.modules.homeManager.agenix;
+    baseProfile = config.flake.profiles.base;
     homeManagerDarwinModule = inputs.home-manager.darwinModules.home-manager;
   };
 
