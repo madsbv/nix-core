@@ -1,28 +1,41 @@
 { inputs }:
-_: {
-  flake.modules = {
-    # NixOS: agenix + agenix-rekey wiring. Consumed by the builders and the
-    # base composite; active only when `mine.agenix.enable` is true.
-    nixos.agenix =
-      {
-        config,
-        lib,
-        pkgs,
-        ...
-      }:
-      {
-        imports = [
-          inputs.agenix.nixosModules.age
-          inputs.agenix-rekey.nixosModules.default
-        ];
+let
+  # Shared agenix(-rekey) wiring, reused by every module class. The classes
+  # only differ in which agenix/agenix-rekey modules they import, so the rekey
+  # config is defined once here. `hostKeyIdentityPaths` additionally derives
+  # agenix `identityPaths` from the NixOS openssh host keys; homeManager/darwin
+  # don't expose a host-key store, so they leave it unset.
+  mkAgenixModule =
+    {
+      imports,
+      hostKeyIdentityPaths ? false,
+    }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    {
+      inherit imports;
 
-        # agenix-rekey asserts `rekey.masterIdentities != []` unconditionally,
-        # so always provide it (the leaf overrides it when enabling).
-        config.age = lib.mkMerge [
+      # agenix-rekey asserts `rekey.masterIdentities != []` unconditionally,
+      # so always provide it (the leaf overrides it when enabling).
+      config.age = lib.mkMerge [
+        {
+          rekey.masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
+        }
+        (lib.mkIf config.mine.agenix.enable (
           {
-            rekey.masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
+            rekey = {
+              hostPubkey = config.mine.agenix.hostPubkey;
+              storageMode = "local";
+              localStorageDir = config.mine.agenix.localStorageDir;
+              generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
+              agePlugins = [ pkgs.age-plugin-yubikey ];
+            };
           }
-          (lib.mkIf config.mine.agenix.enable {
+          // lib.optionalAttrs hostKeyIdentityPaths {
             identityPaths = lib.mkDefault (
               if config.services.openssh.enable or false then
                 map (e: e.path) (
@@ -31,74 +44,33 @@ _: {
               else
                 [ ]
             );
-
-            rekey = {
-              hostPubkey = config.mine.agenix.hostPubkey;
-              storageMode = "local";
-              localStorageDir = config.mine.agenix.localStorageDir;
-              generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
-              agePlugins = [ pkgs.age-plugin-yubikey ];
-            };
-          })
-        ];
-      };
-
-    homeManager.agenix =
-      {
-        config,
-        lib,
-        pkgs,
-        ...
-      }:
-      {
-        imports = [
-          inputs.agenix.homeManagerModules.age
-          inputs.agenix-rekey.homeManagerModules.default
-        ];
-
-        config.age = lib.mkMerge [
-          {
-            rekey.masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
           }
-          (lib.mkIf config.mine.agenix.enable {
-            rekey = {
-              hostPubkey = config.mine.agenix.hostPubkey;
-              storageMode = "local";
-              localStorageDir = config.mine.agenix.localStorageDir;
-              generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
-              agePlugins = [ pkgs.age-plugin-yubikey ];
-            };
-          })
-        ];
-      };
+        ))
+      ];
+    };
+in
+_: {
+  flake.modules = {
+    nixos.agenix = mkAgenixModule {
+      imports = [
+        inputs.agenix.nixosModules.age
+        inputs.agenix-rekey.nixosModules.default
+      ];
+      hostKeyIdentityPaths = true;
+    };
 
-    darwin.agenix =
-      {
-        config,
-        lib,
-        pkgs,
-        ...
-      }:
-      {
-        imports = [
-          inputs.agenix.darwinModules.age
-          inputs.agenix-rekey.darwinModules.default
-        ];
+    homeManager.agenix = mkAgenixModule {
+      imports = [
+        inputs.agenix.homeManagerModules.age
+        inputs.agenix-rekey.homeManagerModules.default
+      ];
+    };
 
-        config.age = lib.mkMerge [
-          {
-            rekey.masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
-          }
-          (lib.mkIf config.mine.agenix.enable {
-            rekey = {
-              hostPubkey = config.mine.agenix.hostPubkey;
-              storageMode = "local";
-              localStorageDir = config.mine.agenix.localStorageDir;
-              generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
-              agePlugins = [ pkgs.age-plugin-yubikey ];
-            };
-          })
-        ];
-      };
+    darwin.agenix = mkAgenixModule {
+      imports = [
+        inputs.agenix.darwinModules.age
+        inputs.agenix-rekey.darwinModules.default
+      ];
+    };
   };
 }
