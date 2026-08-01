@@ -7,9 +7,11 @@ _: {
     {
       programs.git = {
         enable = true;
-        userName = fullName;
-        userEmail = email;
-        extraConfig = {
+        settings = {
+          user = {
+            name = fullName;
+            inherit email;
+          };
           init.defaultBranch = "main";
           pull.rebase = true;
           push.autoSetupRemote = true;
