@@ -1,4 +1,5 @@
-{ inputs, ... }:
+{ inputs }:
+_:
 {
   flake.modules = {
     # NixOS: agenix + agenix-rekey wiring. Consumed by the builders and the

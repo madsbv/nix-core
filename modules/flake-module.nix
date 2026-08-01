@@ -53,7 +53,12 @@ in
     inputs.flake-parts.flakeModules.modules
     inputs.home-manager.flakeModules.default
     inputs.nix-darwin.flakeModules.default
-    ./agenix.nix
+    # `agenix.nix` is applied with core's inputs here rather than imported as a
+    # path: its inner module reads `inputs.agenix`/`inputs.agenix-rekey`, which
+    # must resolve to core's pinned inputs. When this flake module is consumed
+    # by a leaf, the module-system `inputs` argument is the *leaf's* inputs, so
+    # relying on it would break. Currying keeps the closure over core's inputs.
+    (import ./agenix.nix { inherit inputs; })
     ./base.nix
   ]
   ++ features
