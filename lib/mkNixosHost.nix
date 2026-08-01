@@ -58,6 +58,13 @@ let
           agenixHomeManagerModule
         ];
         users.${user}.imports = [
+          # Home Manager evaluates in its own module system: the `mine.*`
+          # values set here in the system evaluation are not visible inside it.
+          # Mirror the resolved subtree so value-driven feature modules (AD-4)
+          # read the same identity in integrated mode.
+          {
+            inherit (config) mine;
+          }
           {
             home.stateVersion = lib.mkDefault "25.05";
           }

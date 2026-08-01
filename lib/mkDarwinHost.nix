@@ -49,6 +49,11 @@ let
           agenixHomeManagerModule
         ];
         users.${user}.imports = [
+          # Mirror the system evaluation's `mine.*` values into the nested
+          # Home Manager evaluation (see lib/mkNixosHost.nix).
+          {
+            inherit (config) mine;
+          }
           {
             home.stateVersion = lib.mkDefault "25.05";
           }
