@@ -287,8 +287,9 @@ Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wi
 Goal: the shared development-tooling modules that all machines reuse.
 
 - [ ] Editors:
-      - `features/editors/emacs.nix` (homeManager) — package + init via `services.emacs` / doom config
-        source strategy (decide in open questions; consider out-of-store symlink for hot reload).
+      - `features/editors/emacs.nix` (homeManager) — package + init via `services.emacs`; the doom
+        config is nix-managed as a store-built `$DOOMDIR` — see
+        "Doomemacs — Option 3: store-built DOOMDIR" under Decisions recorded.
       - `features/editors/nixvim.nix` (homeManager) — neovim via nixvim.
       - `features/editors/vscode.nix` (homeManager) — VS Code, extensions, settings.
 - [ ] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (extend the M1 stub to read `mine.user.email` for
@@ -416,8 +417,9 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 
 ## Open questions / follow-ups
 
-- [ ] **Editors**: which editor(s) and how heavy — full nixvim vs. thin wrappers; emacs variant and
-      whether the emacs config is itself a separate repo/dir (out-of-store symlink for hot reload).
+- [x] **Editors**: resolved — nixvim + packaged emacs via `services.emacs`; the emacs config is
+      nix-managed as a store-built `$DOOMDIR` (Option 3) — see
+      "Doomemacs — Option 3: store-built DOOMDIR" under Decisions recorded.
 - [ ] **Core visibility**: keep `core` private, or public/forkable? (It is designed to be forkable.)
 - [ ] **Master identity per leaf**: same YubiKey for personal and work secret stores, or separate
       master identities.
@@ -473,11 +475,117 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   migration scaffolds `work/` anyway.
 - **Color-scheme goes to core** — base16 wiring + the `molokai` scheme are generic theming.
 - **`keys/builder_ed25519` stays tracked** — it is the macOS linux-builder VM key, not security-sensitive.
-- **Doom config stays a live checkout, not nix-managed** — `~/.config/doom` is a git clone of the
-  shared doom.d repo (fast iteration, matches Doom's runtime writes); framework is `git clone`
-  `doomemacs/core` + `bin/doom install` (module library via the `sources/doom+` submodule). Identity is
-  injected from `mine.user.*` + hostname via a generated `$DOOMDIR/identity.el`; personal and work share
-  one config repo.
+- **Doom config is nix-managed as a store-built `$DOOMDIR`** (Option 3, EMACS.md §5) — `nix build
+  .#doomdirs.<host>` composes core + the active leaf into a store dir that `~/.config/doom` symlinks
+  to; identity is injected from `mine.*` via a generated `identity.el`; personal and work keep
+  isolated doom overlays. Full architecture in "Doomemacs — Option 3: store-built DOOMDIR" below. The
+  framework stays `git clone doomemacs/core` + `bin/doom install` (module library via the
+  `sources/doom+` submodule) so `doom sync` can derive versions.
+
+## Doomemacs — Option 3: store-built DOOMDIR
+
+The doom config is nix-managed end to end. A single derivation composes the whole `$DOOMDIR` from
+core's shared doom tree + the active leaf's overlay and materializes it in the store; `~/.config/doom`
+is a symlink to the store result. This supersedes the earlier "Doom config stays a live checkout"
+decision above. Rapid iteration is preserved two ways: (a) elisp edits are evaluated directly in a
+running emacs, and (b) a full reload is `just doomdir` — a ~1–4 s build + relink + `doom sync`, not a
+host rebuild.
+
+### Layering (core + leaf composition)
+
+Doom reads exactly one `$DOOMDIR` and has no native layering, so composition happens inside the
+derivation:
+
+- **M2 — fragment loading.** Core `config.el`/`packages.el` end with
+  `(load! "config-extra" (doom-user-dir))` / `(load! "packages-extra" ...)`; the leaf fragments are
+  copied alongside. The `:user` module (depth `(-105 . 105)`, path `doom-user-dir`) loads config last,
+  and `package!`/config context is dynamically bound, so leaf fragments override core last.
+- **M3 — module union.** `modules/` is the union of core + leaf module dirs; leaf copies overwrite
+  core on name collision (Doom's first-match module resolution). Private modules shadow builtins of
+  the same name.
+- **M4b — manifest concat.** `init.el` = `core/doom/init.el` ++ `leaf/init-extra.el` (two `doom!`
+  blocks). Verified safe in doomemacs v3: `doom!` is idempotent per module (`doom-module--put` →
+  `puthash` keyed by `(group . name)`, last call wins).
+- **M5 — identity.** `identity.el` generated from a minimal `mine.*` evaluation (below).
+
+### Builder: `core/lib/mkDoomdir.nix`
+
+Curried over core's pinned inputs (mkHomeConfig pattern). Signature:
+`{ system, hostname, coreDir ? (inputs.self + "/doom"), leafDir, identity ? [ ] }` → derivation.
+
+- `coreDir` defaults to core's own doom tree (`inputs.self/doom`, resolved to the *locked* core input
+  inside leaf evals); `leafDir` is the leaf's `self/doom` (always fresh).
+- **Identity extraction decouples eval from host builds.** `mine` comes from a standalone
+  `lib.evalModules` run importing `modules/options.nix` + the host's `identity.nix` (the same module
+  files the host builders use — single source of truth). ~100 ms of eval, NOT the full
+  NixOS/home-manager evaluation. Pulling `mine` from `config.flake.nixosConfigurations.<host>` instead
+  would force a full host eval (+5–30 s).
+- The derivation is pure file ops (`runCommand` + bash): concat init.el, copy config/packages +
+  fragments, union modules/, write identity.el. No elisp compilation (elpa/melpa still go through
+  `doom sync`). Content-addressed: only changed inputs re-realize.
+
+### Flake surface: `flake.doomdirs.<host>`
+
+- Core declares `options.flake.doomdirs` (`lazyAttrsOf raw`) and adds `flake.lib.mkDoomdir`.
+  flake-parts' `flake` option is an open submodule, so `config.flake.doomdirs.<host>` becomes a raw
+  top-level output and `nix build .#doomdirs.<host>` resolves it (raw top-level attr paths work — same
+  as `.#homeConfigurations.<user>...`). No hostname-based alias; the justfile fills in `<host>`.
+- Leaf registers per host (e.g. `hosts/default.nix`):
+  `config.flake.doomdirs."<host>" = config.flake.lib.mkDoomdir { system = ...; leafDir = ./doom;
+  identity = [ ./<host>/identity.nix ]; }`.
+
+### Leaf + core scaffolding
+
+Each leaf gets a `doom/` overlay: `init-extra.el` (leaf `doom!` additions), `config-extra.el`,
+`packages-extra.el`, `modules/`. Core gets `doom/init.el`, `doom/config.el`, `doom/packages.el`,
+`doom/modules/`, the M2 trailers, and the read-only redirects.
+
+### Read-only DOOMDIR redirects (core `doom/config.el`)
+
+The store dir is read-only (EMACS.md §5.3), so core config.el redirects runtime writes:
+`custom-file` → `$XDG_STATE_HOME/doom/custom.el`, `custom-theme-directory` → XDG, plus the
+transient/history redirects Doom v3 doesn't already send to XDG. `snippets/`/`autoload/` are baked
+read-only (config-in-nix). These are the one behavior change vs the live-checkout design and ship once
+in core.
+
+### Core justfile helper
+
+```make
+leaf := `[[ -d ../personal ]] && echo ../personal || echo ../work`
+host := `hostname`
+
+# Rebuild the store DOOMDIR, relink ~/.config/doom, then doom sync.
+doomdir:
+    set -euo pipefail
+    out=$(nix build --print-out-paths "{{leaf}}#doomdirs.{{host}}")
+    if [ -e "$HOME/.config/doom" ] && [ ! -L "$HOME/.config/doom" ]; then
+        echo "error: $HOME/.config/doom exists and is not a symlink" >&2; exit 1
+    fi
+    ln -sfn "$out" "$HOME/.config/doom"
+    "$HOME/.config/emacs/bin/doom" sync
+```
+
+`doom sync` requires the framework git checkout (`~/.config/emacs`, from `doom install`) — matching the
+v3 requirement that the emacs dir stay a git checkout for version derivation and the per-profile
+generated init.
+
+### Evaluation scope & time
+
+`nix build .#doomdirs.<host>` forces: lock resolution, flake-parts top-level structure, the requested
+host's identity mini-eval, a small `pkgs` closure (runCommand/stdenv), and realization. It does NOT
+force host configs, HM activation packages, other systems, or the nixpkgs bulk — `flake.doomdirs` is a
+lazy attr, so only the selected host is touched. Estimate **~1–4 s total, eval ~1–3 s**.
+
+Workflow caveats: core `doom/` edits require commit + `nix flake update core` in the leaves before a
+leaf build sees them (path-input narHash pin — same ordering as every core change); leaf `doom/` edits
+surface immediately.
+
+### Acceptance
+
+- `nix build .#doomdirs.<host>` in personal/work produces a store dir with the composed init.el /
+  config.el+extra / packages.el+extra / modules union / identity.el.
+- `just doomdir` relinks `~/.config/doom` and runs `doom sync`.
+- `nix flake check` green in all three repos.
 
 ## Source inventory (abbreviated)
 
@@ -675,18 +783,12 @@ names, so they can be evaluated on their own merits.
   destination (core base / core feature / leaf / drop) from its semantics, then port its
   content. Motivation: modules entangled in legacy plumbing are often still sound; dropping
   them because of a broken wrapper loses working functionality.
-- **Doomemacs: distinguish the config dir from the framework dir.** When porting
-  `homeManagerModules/emacs`, keep two paths apart: `~/.config/doom` is the user's config (a live
-  git checkout of the doom.d repo; `config.org` tangles to `config.el`, and
-  `config.el`/`packages.el`/`custom.el` are gitignored), while `~/.config/emacs` is the framework
-  install — `git clone` `doomemacs/core` plus `bin/doom install`, which initializes the
-  `sources/doom+` submodule (the module library, `doomemacs/modules`). Do not let a leaf symlink a
-  config dir onto `~/.config/emacs`; that would clobber the framework. Keep DOOMDIR a live checkout
-  (fast iteration, matches Doom's runtime writes like `custom-file` → `$DOOMDIR/custom.el`), and
-  inject identity from nix by generating a `$DOOMDIR/identity.el` at activation from `mine.user.*`
-  plus hostname, which the doom config reads — personal and work share one config repo with
-  per-host identity injected rather than committed. Verified against doomemacs v3: user-module
-  overlays under `$DOOMDIR/modules/<cat>/<name>/` still load with highest priority, the emacs-dir
-  `.local/` state is moving to XDG dirs, and `doom sync` emits a per-profile generated init file
-  that requires the emacs dir to be a git checkout. The old `configRepo` default
-  (`personal-doom.git`) is stale; the live remote is `madsbv/doom.d.git`.
+- **Doomemacs: distinguish the config dir from the framework dir.** `~/.config/doom` is the user's
+  config (now a symlink to a store-built DOOMDIR — see "Doomemacs — Option 3: store-built DOOMDIR"
+  under Decisions recorded), while `~/.config/emacs` is the framework install — `git clone`
+  `doomemacs/core` plus `bin/doom install` (initializes the `sources/doom+` submodule). Do not let a
+  leaf symlink a config dir onto `~/.config/emacs`; that would clobber the framework, and `doom sync`
+  needs the emacs dir to be a git checkout. Identity is injected from `mine.user.*` + hostname via
+  the generated `identity.el`; personal and work keep isolated doom overlays (no shared config
+  segments). The old `configRepo` default (`personal-doom.git`) is stale; the live remote is
+  `madsbv/doom.d.git`.
