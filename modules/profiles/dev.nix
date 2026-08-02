@@ -20,7 +20,6 @@
       config.flake.modules.homeManager.fortran
       config.flake.modules.homeManager.R
       config.flake.modules.homeManager.dev-tools
-      config.flake.modules.homeManager.docker
     ];
     darwin = [
       config.flake.modules.darwin.docker
