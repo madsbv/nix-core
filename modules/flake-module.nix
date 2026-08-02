@@ -40,6 +40,7 @@ in
     (import ./agenix.nix { inherit inputs; })
     (import ./base.nix { inherit inputs; })
     (import ./color-scheme.nix { inherit inputs; })
+    (import ./features/editors/_nixvim.nix { inherit inputs; })
   ]
   ++ features
   ++ profiles
