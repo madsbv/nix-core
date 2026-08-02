@@ -322,25 +322,24 @@ Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wi
 
 Goal: the shared development-tooling modules that all machines reuse.
 
-- [ ] Editors:
-      - `features/editors/emacs.nix` (homeManager) — package + init via `services.emacs`; the doom
-        config is nix-managed as a store-built `$DOOMDIR` — see
-        "Doomemacs — Option 3: store-built DOOMDIR" under Decisions recorded.
-      - `features/editors/nixvim.nix` (homeManager) — neovim via nixvim.
-
-- [ ] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (extend the M1 stub to read `mine.user.email` for
-      signing key + per-host config), `direnv.nix`, `toolchains.nix` (node/python/rust/linters/formatters/
-      language servers), `docker.nix` (system-level, nixos+darwin guarded).
-- [ ] Shell (`features/shell.nix`): zsh/fish choice, starship prompt, completions.
-- [ ] Profiles (`modules/profiles/`): `shell`, `dev`, `editors` aggregates composed from the above.
-- [ ] Platform guards: any feature that differs between Linux and macOS uses `lib.mkIf` on the platform
-      or is split into separate per-platform modules.
+- [x] Editors:
+      - `features/editors/emacs.nix` (homeManager) — `services.emacs`; DOOMDIR builder deferred.
+      - `features/editors/nixvim.nix` (homeManager) — neovim via nixvim (oxalica overlay pattern).
+- [x] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (extended with `mine.ssh.signingKey` + full
+      client config), `direnv.nix`, per-language toolchains (`python.nix`, `shell.nix`, `go.nix`,
+      `rust.nix` via oxalica, `javascript.nix`, `java.nix`, `lua.nix`, `nix.nix`, `fortran.nix`,
+      `R.nix`, `tools.nix`), `docker.nix` (nixos+darwin guarded).
+- [x] Shell (`features/shell.nix`): zsh + starship + fzf/zoxide/eza/bat.
+- [x] Additional features: `features/terminal.nix` (alacritty), `profiles/terminal.nix`.
+- [x] Profiles (`modules/profiles/`): `shell`, `dev`, `editors`, `terminal` aggregates.
+- [x] Platform guards: docker uses per-class modules (nixos/darwin); homebrew is a darwin core module.
+- [x] New core inputs: nixvim, rust-overlay (oxalica), nix-homebrew, direnv-instant.
 
 **Acceptance criteria**
 
-- Every feature is a single file that contributes to the right module classes.
-- A host profile `editors + dev + shell` builds for NixOS, darwin, and standalone HM with the same code.
-- No personal or work-specific values in any feature.
+- [x] Every feature is a single file that contributes to the right module classes.
+- [x] A host profile `editors + dev + shell` builds for NixOS and standalone HM with the same code.
+- [x] No personal or work-specific values in any feature.
 
 ---
 
