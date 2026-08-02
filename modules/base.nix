@@ -39,6 +39,7 @@
       imports = [
         ./options.nix
         config.flake.modules.darwin.agenix
+        config.flake.modules.darwin.homebrew
       ];
     };
   };

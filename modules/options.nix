@@ -130,6 +130,13 @@ in
       };
     };
 
+    # SSH client signing (wired by `features/dev/ssh.nix`).
+    ssh.signingKey = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Path to SSH key for commit signing. Set in the leaf host identity; when non-null, programs.git.signing is enabled.";
+    };
+
     # Remote building (wired by `modules/system/builder.nix`).
     remoteBuilder = {
       enableLocalBuilder = lib.mkEnableOption "local `builder` user for remote builds";
