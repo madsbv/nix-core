@@ -1,6 +1,10 @@
 _: {
   flake.modules.homeManager.git =
-    { config, ... }:
+    {
+      config,
+      lib,
+      ...
+    }:
     let
       inherit (config.mine.user) fullName email;
     in
@@ -10,6 +14,8 @@ _: {
         settings = {
           user = {
             name = fullName;
+          }
+          // lib.optionalAttrs (email != null) {
             inherit email;
           };
           init.defaultBranch = "main";
