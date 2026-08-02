@@ -17,6 +17,7 @@ let
   mkNixosHost = import ../lib/mkNixosHost.nix {
     inherit inputs lib;
     baseProfile = config.flake.profiles.base;
+    homeManagerBase = config.flake.modules.homeManager.base;
     homeManagerModule = inputs.home-manager.nixosModules.home-manager;
   };
 
@@ -48,13 +49,16 @@ in
     inputs.flake-parts.flakeModules.modules
     inputs.home-manager.flakeModules.default
     inputs.nix-darwin.flakeModules.default
-    # `agenix.nix` is applied with core's inputs here rather than imported as a
-    # path: its inner module reads `inputs.agenix`/`inputs.agenix-rekey`, which
-    # must resolve to core's pinned inputs. When this flake module is consumed
-    # by a leaf, the module-system `inputs` argument is the *leaf's* inputs, so
-    # relying on it would break. Currying keeps the closure over core's inputs.
+    # `agenix.nix`/`base.nix`/`color-scheme.nix` are applied with core's inputs
+    # here rather than imported as paths: their inner modules read
+    # `inputs.agenix`/`inputs.agenix-rekey`/`inputs.impermanence`/`inputs.base16`,
+    # which must resolve to core's pinned inputs. When this flake module is
+    # consumed by a leaf, the module-system `inputs` argument is the *leaf's*
+    # inputs, so relying on it would break. Currying keeps the closure over
+    # core's inputs.
     (import ./agenix.nix { inherit inputs; })
-    ./base.nix
+    (import ./base.nix { inherit inputs; })
+    (import ./color-scheme.nix { inherit inputs; })
   ]
   ++ features
   ++ profiles;

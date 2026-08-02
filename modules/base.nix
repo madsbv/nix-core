@@ -1,10 +1,30 @@
-{ config, ... }:
+# Base composites: the per-class `flake.modules.<class>.base` modules that
+# every host gets by default (via the builders' `baseProfile`). Each class's
+# base pulls in the identity options, agenix wiring, the system modules, and
+# the NixOS-only base content. Feature modules add their own contributions to
+# these composites (e.g. color-scheme).
+#
+# Curried over core's pinned `inputs` (same pattern as `modules/agenix.nix`):
+# `modules/nixos/base.nix` imports `inputs.impermanence`, which must resolve to
+# core's input, not a leaf's.
+{ inputs }:
+{
+  config,
+  ...
+}:
 {
   flake.modules = {
     nixos.base = {
       imports = [
         ./options.nix
         config.flake.modules.nixos.agenix
+        ./system/users.nix
+        ./system/keys.nix
+        ./system/builder.nix
+        ./system/update-diff.nix
+        ./system/register-flake.nix
+        ./system/detect-hostname-change.nix
+        (import ./nixos/base.nix { inherit inputs; })
       ];
     };
 
