@@ -87,7 +87,7 @@ notes in PLAN.md).
 | AD-1 | **Three-repo diamond**: `core ← personal`, `core ← work` | Work isolation is a hard requirement; both leaves share generic config without work ever seeing personal data. |
 | AD-2 | **Core contains no hosts, no identity, no secrets** | Keeps core forkable/public-able, and makes the sharing boundary auditable. |
 | AD-3 | **flake-parts + dendritic feature modules** | Every `.nix` file (except entry points) is a flake-parts module; features span NixOS + nix-darwin + Home Manager in one file. This is the community's answer to cross-class sharing. Modules auto-loaded with import-tree. |
-| AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.user.*`, `mine.location.*`, `mine.network.tailscale.enable`, ...) with no defaults. Feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
+| AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.primaryUser`, `mine.users`, `mine.location.*`, `mine.network.tailscale.enable`, ...) with no defaults. `mine.user` is derived from the primary user; feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
 | AD-5 | **Thin builder library, plus class-keyed module registry** | Core exports the builders (`config.flake.lib.mkNixosHost` / `mkDarwinHost` / `mkHomeConfig` / `mkDeploy`, encapsulating all wiring) **and** the per-class module registry (`config.flake.modules.{nixos,homeManager,darwin}.*`), so leaves can drop to raw modules when they need to. |
 | AD-6 | **Version pinning owned by core** | Leaves follow `core/nixpkgs`; core's builders reference core-pinned home-manager / nix-darwin / agenix-rekey / deploy-rs / nixos-wsl. One lock to update, no drift between personal and work. |
 | AD-7 | **Secrets: agenix-rekey, per leaf** | Keeps the existing YubiKey master-key workflow. Generators + dummy-pubkey bootstrap suit home servers. Core wires the *mechanism*; each leaf owns its encrypted files, `secrets.nix`, and `rekeyed/` outputs. |
@@ -107,6 +107,7 @@ core/
 │   ├── options.nix           # declares mine.* options (no defaults)
 │   ├── agenix.nix            # agenix(-rekey) wiring, per class (nixos + homeManager + darwin)
 │   ├── base.nix              # composites: nixos.base / darwin.base / homeManager.base
+│   ├── color-scheme.nix      # base16 nixos/homeManager/darwin modules, default molokai
 │   ├── treefmt.nix           # nixfmt / statix / deadnix, wired into `nix flake check`
 │   ├── devShell.nix          # core dev shell (curried over core's inputs)
 │   ├── profiles/             # role aggregates: base, shell, dev, editors, desktop, server, headless
@@ -118,8 +119,8 @@ core/
 │   │   ├── yubikey.nix       #   (migration M2)
 │   │   ├── laptop.nix        #   reserved for a future laptop (migration M2)
 │   │   └── desktop.nix       #   generic desktop bits, platform-guarded
-│   ├── system/               # core-bound system modules: keys, builder, users, update-diff (M1)
-│   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...) (M1)
+│   ├── system/               # keys, builder, users framework, update-diff, register-flake, ...
+│   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...)
 │   # (no darwin/: darwin-specific config lives in personal — see the migration amendment)
 ├── lib/                      # builder functions + deploy integration
 │   ├── load.nix              # import-tree auto-loader
@@ -180,14 +181,22 @@ Hosts then compose class-keyed profiles and features, e.g.:
 Core declares options such as:
 
 - `mine.hostName`
-- `mine.user.username`, `mine.user.fullName`, `mine.user.email`
+- `mine.primaryUser` — picks the primary user from `mine.users`
+- `mine.users` — attrset keyed by username; per-user `username`, `fullName`, `email`, `isSystemUser`,
+  `uid`, `gid` (darwin-only), `shell`, `extraGroups`, `sshAuthorizedKeys`, `initialHashedPassword`,
+  `homeManagerModules`
+- `mine.user` — derived alias of `mine.users.<primaryUser>`; inside a Home Manager evaluation it
+  resolves to the *current* user
 - `mine.location.timezone`, `mine.location.latitude`, `mine.location.longitude`
 - `mine.network.tailscale.enable`
 
-Each leaf host supplies an `identity.nix` that sets these. Every evaluation gets the options module via
-the per-class base composite (`config.flake.modules.{nixos,homeManager,darwin}.base`), which the builders
-include by default in both integrated and standalone Home Manager — no `specialArgs` or `sharedModules`
-plumbing. Leaves may freely override; core defaults use `lib.mkDefault`.
+Each leaf host supplies an `identity.nix` that sets these. The users framework
+(`modules/system/users.nix`) turns `mine.users` into NixOS users and per-user Home Manager configs:
+non-system users get `wheel` and their own HM config (separate browser/WM/desktop per user), system
+users become robot/service accounts (locked shell, key-only SSH). Every evaluation gets the options
+module via the per-class base composite (`config.flake.modules.{nixos,homeManager,darwin}.base`), which
+the builders include by default in both integrated and standalone Home Manager — no `specialArgs` or
+`sharedModules` plumbing. Leaves may freely override; core defaults use `lib.mkDefault`.
 
 ### Secrets flow (agenix-rekey)
 

@@ -75,6 +75,56 @@ leaf proving cross-repo consumption.
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
 
+### Migration M1 — system modules, `nixos/base.nix`, color-scheme, multi-user framework
+
+Completed the M1 port: `modules/system/*`, `modules/nixos/base.nix`, and the molokai/base16 color-scheme
+now ship in core, and real hosts build from it. `personal` (NixOS `scaffold-test` + HM `scaffold-hm`) and
+`work` (HM `work`) both build; `nix flake check` green in all three repos. Leaves were relocked with
+`nix flake update core` after each core change.
+
+- **Users framework (Option B)**: `mine.primaryUser` selects the primary user from a full `mine.users`
+  attrset; `mine.user` is a derived alias (`mine.users.<primaryUser>`). Per-user submodule: `username`
+  (defaults to the attr key), `fullName`, `email`, `isSystemUser`, `uid`, `gid` (darwin-only), `shell`,
+  `extraGroups`, `sshAuthorizedKeys`, `initialHashedPassword`, `homeManagerModules`.
+- **Robots + multi-user**: `modules/system/users.nix` maps `mine.users` → `users.users` + per-user
+  `home-manager.users` + gated per-user agenix id-key secrets (`id.<host>.<user>`). Non-system users get
+  `wheel` automatically and each gets its own HM config (separate browser/WM/desktop); system users become
+  robot accounts (locked shell, key-only SSH) and each get a matching `users.groups.<name>`.
+- **HM per-user wiring**: per-user HM imports include `{ inherit (config) mine; }` (the system-eval
+  mirror) + `home.stateVersion` + the user's `homeManagerModules`. `mkNixosHost` no longer uses
+  `home-manager.sharedModules` — importing `homeManager.base` both there and via the primary's
+  `profilesHm` re-declared the agenix options. Instead the base composite feeds the primary through
+  `profilesHm` and is prepended to additional users' modules via the builder's `users` parameter.
+- **`modules/nixos/base.nix`** (curried over `inputs`, imports impermanence's nixos module): ported
+  `nixosModules/common` — timezone, `system.autoUpgrade` (leaf flake), networking/nameservers/networkd,
+  systemd tweaks, i18n, firmware, neovim/git/zsh, openssh, zfs autosnapshot/scrub, `users.mutableUsers =
+  false`, sudo `execWheelOnly`. Impermanence is default-on (`/nix/persist`) behind
+  `mine.system.persistence.enable`.
+- **Color-scheme**: `modules/color-scheme.nix` ports the `molokai` base16 scheme and wires the base16
+  nixos/homeManager/darwin modules defaulting to molokai. New core inputs: `base16`
+  (`github:SenchoPens/base16.nix`, deliberately no nixpkgs follow — it only needs `fromYaml`),
+  `impermanence` (follows nixpkgs).
+- **Other system modules**: keys, builder, update-diff, register-flake, detect-hostname-change ported from
+  `local.*` / `flake-root` / hardcoded pubkeys to `mine.*`. Their option declarations are centralized in
+  `modules/options.nix` (`mine.ssh.knownHosts.*`, `mine.remoteBuilder.*`, `mine.system.persistence`,
+  `mine.system.autoUpgrade`). The builder module adds a remote-build `builder` user + `nix.buildMachines`.
+
+Gotchas / decisions:
+
+- **System-only `mine.*` must be declared centrally**: the generic `{ inherit (config) mine; }` mirror
+  carries *every* `mine.*` option into HM evals, so any new system option must be declared in
+  `modules/options.nix` (shared by `nixos.base` + `homeManager.base`), not in a system module — otherwise
+  HM evals fail with "`option … does not exist`".
+- **Impermanence bind-mount rewrite breaks `""`**: `users.<name>.directories = [ "" ]` (whole-home)
+  throws `cannot create list of size -1` (`parentsOf ""` → `take (-1)`). Whole-home persistence now uses
+  root-level `directories` entries with per-user ownership (`user`/`group`/`mode`).
+- **NixOS lockout assertion**: `users.mutableUsers = false` requires a wheel user with an SSH key (or
+  password) or a root key; leaf identities must supply one. The scaffold uses a placeholder key.
+- **`nix fmt` must run in core** (leaf flakes have no formatter); afterwards `git add -A` again and
+  `nix flake update core` in the leaves. Formatting failures also block `nix flake check`.
+- **Stale leaf locks hide breakage**: `work` initially failed with `undefined variable 'config'` purely
+  because its lock pinned a broken intermediate core commit; `nix flake update core` fixed it.
+
 ### `68514b9` `c43b606` — agenix refactor, devShell input closure, README/PLAN reconciliation
 
 Review-driven cleanup addressing the five code/plan divergences noted at the end of M1:
@@ -363,6 +413,11 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   migration scaffolds `work/` anyway.
 - **Color-scheme goes to core** — base16 wiring + the `molokai` scheme are generic theming.
 - **`keys/builder_ed25519` stays tracked** — it is the macOS linux-builder VM key, not security-sensitive.
+- **Doom config stays a live checkout, not nix-managed** — `~/.config/doom` is a git clone of the
+  shared doom.d repo (fast iteration, matches Doom's runtime writes); framework is `git clone`
+  `doomemacs/core` + `bin/doom install` (module library via the `sources/doom+` submodule). Identity is
+  injected from `mine.user.*` + hostname via a generated `$DOOMDIR/identity.el`; personal and work share
+  one config repo.
 
 ## Source inventory (abbreviated)
 
@@ -405,9 +460,10 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 
 ### M1 — Core framework: replace the wiring (delivers Milestones 0–1)
 
-> Status: **in progress** — scaffolding, `options.nix`, `agenix.nix`, builders and proof feature files are
-> done (commit `ca41927`); throwaway-leaf verification is done (`2f9d11b`). Still pending: `modules/system/*`
-> and `modules/nixos/base.nix` ported content, and color-scheme / overlays / `pkgs`.
+> Status: **done** — framework (`ca41927` → `2f9d11b`), `modules/system/*`, `modules/nixos/base.nix`, and
+> color-scheme all landed; `personal` (NixOS + HM) and `work` (HM) build and pass `nix flake check`.
+> The remaining sub-items (overlays/`pkgs`, fenix/hosts/direnv-instant/disko/nix-auth inputs) are not
+> needed for host builds; they stay on the M2/M6 checklists.
 
 - [x] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
 - [x] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
@@ -415,18 +471,20 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
       + `homeManagerModules/user-profile`. (Plus `mine.agenix.*`.)
 - [x] `modules/agenix.nix` — rekey mechanism from `systemModules/yubikey-agenix-rekey`; options
       `masterIdentities` / `hostPubkey` / `localStorageDir` / `generatedSecretsDir` supplied by the leaf.
-- [ ] `modules/system/*` — keys, builder, users framework (rewritten around `mine.user.*` + per-host user
-      list; provides home-manager wiring + agenix id-key provisioning), update-diff, register-flake,
-      detect-hostname-change.
-- [ ] `modules/nixos/base.nix` — from `nixosModules/common`: networking/firewall/nameservers, systemd
+- [x] `modules/system/*` — keys, builder, users framework (rewritten around Option B: `mine.primaryUser` +
+      full `mine.users` attrset, `mine.user` derived; provides per-user home-manager wiring + agenix
+      id-key provisioning), update-diff, register-flake, detect-hostname-change.
+- [x] `modules/nixos/base.nix` — from `nixosModules/common`: networking/firewall/nameservers, systemd
       tweaks, openssh, zfs, impermanence base, autoUpgrade (flake URL from leaf), programs, sudo, user
       defaults. Personal secret paths (restic/wifi) stripped.
 - [x] Base composites + builders: `modules/base.nix` (nixos.base + homeManager.base),
       `lib/mkNixosHost.nix`, `lib/mkDarwinHost.nix` (small, shared wiring), `lib/mkHomeConfig.nix`,
       `lib/mkDeploy.nix`.
-- [ ] Color-scheme (base16 + `molokai`), overlays, `pkgs` (nox et al.), core devShell, and the core-owned
-      flake inputs (fenix, base16, hosts, direnv-instant, impermanence, disko, deploy-rs, agenix-rekey,
-      nix-auth, nix-darwin). *(devShell + treefmt-nix done; rest pending.)*
+- [x] Color-scheme (`modules/color-scheme.nix`: base16 nixos/homeManager/darwin modules defaulting to the
+      ported `molokai` scheme) + core inputs `base16` (`github:SenchoPens/base16.nix`, no nixpkgs follow)
+      and `impermanence` (follows nixpkgs). Core devShell + treefmt-nix done.
+- [ ] Overlays, `pkgs` (nox et al.), and the remaining core-owned inputs (fenix, hosts, direnv-instant,
+      disko, nix-auth) — not needed for host builds; deferred.
 - [x] Proof modules: `shell`, `git`, and `ssh` feature files, plus a scratch NixOS host and a standalone
       `mkHomeConfig`, verified in both `personal` and `work` (`2f9d11b`). *(Written from scratch rather than
       ported from the old repo; `git` reads `mine.user.*`. `ssh` is a minimal stub here — its email-driven
@@ -435,6 +493,9 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 **Acceptance criteria**
 
 - `nix flake check` green in core; scratch host + standalone HM build from core only.
+- Real hosts build: `.#nixosConfigurations.scaffold-test.config.system.build.toplevel` (personal) plus
+  `.#homeConfigurations.{scaffold-hm,work}.activationPackage` (personal, work); robot/service accounts and
+  multiple human users with separate HM configs verified via `nix eval`.
 - No darwin-specific system modules in core (builder + shared HM features only).
 
 ### M2 — Core-bound modules, one per checklist item
@@ -554,3 +615,18 @@ names, so they can be evaluated on their own merits.
   destination (core base / core feature / leaf / drop) from its semantics, then port its
   content. Motivation: modules entangled in legacy plumbing are often still sound; dropping
   them because of a broken wrapper loses working functionality.
+- **Doomemacs: distinguish the config dir from the framework dir.** When porting
+  `homeManagerModules/emacs`, keep two paths apart: `~/.config/doom` is the user's config (a live
+  git checkout of the doom.d repo; `config.org` tangles to `config.el`, and
+  `config.el`/`packages.el`/`custom.el` are gitignored), while `~/.config/emacs` is the framework
+  install — `git clone` `doomemacs/core` plus `bin/doom install`, which initializes the
+  `sources/doom+` submodule (the module library, `doomemacs/modules`). Do not let a leaf symlink a
+  config dir onto `~/.config/emacs`; that would clobber the framework. Keep DOOMDIR a live checkout
+  (fast iteration, matches Doom's runtime writes like `custom-file` → `$DOOMDIR/custom.el`), and
+  inject identity from nix by generating a `$DOOMDIR/identity.el` at activation from `mine.user.*`
+  plus hostname, which the doom config reads — personal and work share one config repo with
+  per-host identity injected rather than committed. Verified against doomemacs v3: user-module
+  overlays under `$DOOMDIR/modules/<cat>/<name>/` still load with highest priority, the emacs-dir
+  `.local/` state is moving to XDG dirs, and `doom sync` emits a per-profile generated init file
+  that requires the emacs dir to be a git checkout. The old `configRepo` default
+  (`personal-doom.git`) is stale; the live remote is `madsbv/doom.d.git`.
