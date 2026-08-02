@@ -113,7 +113,7 @@ core/
 │   ├── _hm-mirror.nix        # helper: prune-based identity mirror for Home Manager evals
 │   ├── profiles/             # role aggregates: base, shell, dev (class-keyed modules)
 │   ├── features/             # cross-class features, one file per capability
-│   │   ├── editors/          #   emacs.nix, nixvim.nix, vscode.nix
+│   │   ├── editors/          #   emacs.nix, nixvim.nix
 │   │   ├── dev/              #   git.nix, gh.nix, ssh.nix, direnv.nix, toolchains
 │   │   ├── shell.nix         #   zsh/fish + starship + fzf/zoxide/eza/bat
 │   │   ├── tailscale.nix     #   nixos service + hm cli (default off)

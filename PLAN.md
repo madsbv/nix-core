@@ -327,7 +327,7 @@ Goal: the shared development-tooling modules that all machines reuse.
         config is nix-managed as a store-built `$DOOMDIR` — see
         "Doomemacs — Option 3: store-built DOOMDIR" under Decisions recorded.
       - `features/editors/nixvim.nix` (homeManager) — neovim via nixvim.
-      - `features/editors/vscode.nix` (homeManager) — VS Code, extensions, settings.
+
 - [ ] Dev tools (`features/dev/`): `gh.nix`, `ssh.nix` (extend the M1 stub to read `mine.user.email` for
       signing key + per-host config), `direnv.nix`, `toolchains.nix` (node/python/rust/linters/formatters/
       language servers), `docker.nix` (system-level, nixos+darwin guarded).
@@ -511,7 +511,7 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   migration scaffolds `work/` anyway.
 - **Color-scheme goes to core** — base16 wiring + the `molokai` scheme are generic theming.
 - **`keys/builder_ed25519` stays tracked** — it is the macOS linux-builder VM key, not security-sensitive.
-- **Doom config is nix-managed as a store-built `$DOOMDIR`** (Option 3, EMACS.md §5) — `nix build
+- **Doom config is nix-managed as a store-built `$DOOMDIR`** (Option 3) — `nix build
   .#doomdirs.<host>` composes core + the active leaf into a store dir that `~/.config/doom` symlinks
   to; identity is injected from `mine.*` via a generated `identity.el`; personal and work keep
   isolated doom overlays. Full architecture in "Doomemacs — Option 3: store-built DOOMDIR" below. The
@@ -578,7 +578,7 @@ Each leaf gets a `doom/` overlay: `init-extra.el` (leaf `doom!` additions), `con
 
 ### Read-only DOOMDIR redirects (core `doom/config.el`)
 
-The store dir is read-only (EMACS.md §5.3), so core config.el redirects runtime writes:
+The store dir is read-only, so core config.el redirects runtime writes:
 `custom-file` → `$XDG_STATE_HOME/doom/custom.el`, `custom-theme-directory` → XDG, plus the
 transient/history redirects Doom v3 doesn't already send to XDG. `snippets/`/`autoload/` are baked
 read-only (config-in-nix). These are the one behavior change vs the live-checkout design and ship once
