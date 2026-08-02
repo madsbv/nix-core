@@ -49,7 +49,7 @@ let
             inherit (config) mine;
           }
           {
-            home.stateVersion = lib.mkDefault "25.05";
+            home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
           }
         ]
         ++ profilesHm
@@ -63,6 +63,18 @@ inputs.nix-darwin.lib.darwinSystem {
     {
       networking.hostName = lib.mkDefault hostname;
     }
+    (
+      {
+        config,
+        lib,
+        ...
+      }:
+      {
+        # Resolved from `mine.system.stateVersion`; leaves may override
+        # `system.stateVersion` directly.
+        system.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
+      }
+    )
     homeManagerDarwinModule
     userWiring
   ]

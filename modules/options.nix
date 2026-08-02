@@ -1,5 +1,10 @@
 { lib, config, ... }:
 let
+  # Central default for `stateVersion` (NixOS / Home Manager). Leaves are
+  # encouraged to override it per host via `mine.system.stateVersion`; when they
+  # don't, this default is used and a warning is emitted.
+  defaultStateVersion = "25.05";
+
   # Shared submodule for every user (the primary user and any additional users,
   # including robot/service accounts). Identity drives value-based features
   # (AD-4); the machine-level fields live on `mine` directly, not per-user.
@@ -153,6 +158,56 @@ in
           description = "Flake to auto-upgrade from (the leaf's own repo).";
         };
       };
+
+      # Package diff on activation (wired by `modules/system/update-diff.nix`).
+      updateDiff = {
+        enable = lib.mkEnableOption "show a package diff between the current and incoming system" // {
+          default = true;
+        };
+        command = lib.mkOption {
+          type = lib.types.nullOr lib.types.singleLineStr;
+          default = null;
+          description = "Diff command; the update-diff module resolves a `dix`/`nvd` default.";
+        };
+        text = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Diff script snippet (composed by the update-diff module).";
+        };
+      };
+
+      # Register the flake a system was built with (wired by
+      # `modules/system/register-flake.nix`).
+      registerFlake = {
+        flake = lib.mkOption {
+          type = lib.types.nullOr lib.types.raw;
+          default = null;
+          description = "The leaf's own flake, so the running machine can introspect its configuration.";
+        };
+        registerSelf = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Add the flake the system was built with to `nix.registry` as `self`.";
+        };
+      };
+
+      # Wrong-host protection (wired by `modules/system/detect-hostname-change.nix`).
+      detectHostnameChange.enable = lib.mkEnableOption "warn if the hostname changes between deploys" // {
+        default = true;
+      };
+
+      # stateVersion, overridable per host. Core warns and falls back to its
+      # default when a host leaves it unset; `stateVersionFinal` is the derived
+      # value that NixOS / Home Manager wiring consumes.
+      stateVersion = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Per-host stateVersion override (set in the host's identity). When unset, core's default (${defaultStateVersion}) is used and a warning is emitted.";
+      };
+      stateVersionFinal = lib.mkOption {
+        type = lib.types.str;
+        description = "Resolved stateVersion (read-only; derived from `mine.system.stateVersion`).";
+      };
     };
 
     # Secret store wiring. Supplied by the leaf per host; only consumed when
@@ -215,6 +270,25 @@ in
     # resolution here.
     (lib.mkIf (config ? home && config.mine.users ? ${config.home.username}) {
       mine.user = lib.mkForce config.mine.users.${config.home.username};
+    })
+    # Resolve the per-host stateVersion: `mine.system.stateVersion` is null when
+    # a leaf hasn't set it, so fall back to core's default and warn. The
+    # `config ? warnings` guard keeps this safe on module systems without a
+    # `warnings` option (e.g. older nix-darwin evals). Note: the `or` operator
+    # only falls through on *missing* attributes, not null values, so an
+    # explicit null check is required here.
+    {
+      mine.system.stateVersionFinal = lib.mkDefault (
+        if config.mine.system.stateVersion == null then
+          defaultStateVersion
+        else
+          config.mine.system.stateVersion
+      );
+    }
+    (lib.mkIf (config ? warnings && config.mine.system.stateVersion == null) {
+      warnings = [
+        "mine.system.stateVersion is unset on this host; using core's default (${defaultStateVersion}). Set mine.system.stateVersion per host so state-version upgrades are explicit and intentional."
+      ];
     })
     {
       assertions = [

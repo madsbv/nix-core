@@ -15,6 +15,10 @@
   config = {
     time.timeZone = lib.mkDefault config.mine.location.timezone;
 
+    # Resolved from `mine.system.stateVersion` (core default unless the leaf
+    # overrides); leaves may still set `system.stateVersion` directly.
+    system.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
+
     # autoUpgrade targets the leaf's own repo; off by default, leaf enables.
     system.autoUpgrade = lib.mkIf config.mine.system.autoUpgrade.enable {
       flake = config.mine.system.autoUpgrade.flake;

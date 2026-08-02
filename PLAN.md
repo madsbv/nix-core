@@ -75,6 +75,53 @@ leaf proving cross-repo consumption.
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
 
+### Review follow-ups — `srvos.*` → `mine.*`, centralized `stateVersion`, darwin deferral, `mkDeploy` API
+
+Review-driven cleanup after the M1 migration:
+
+- **`srvos.*` namespace removed.** The leaf-facing options for update-diff, register-flake, and
+  detect-hostname-change were declared in their own system modules under a `srvos.*` namespace, split off
+  from the `mine.*` convention (AD-4). They are now `mine.system.updateDiff.{enable,command,text}`,
+  `mine.system.registerFlake.{flake,registerSelf}`, and `mine.system.detectHostnameChange.enable`, with
+  declarations centralized in `modules/options.nix` — required anyway because the generic `mine` mirror
+  into Home Manager evals carries every `mine.*` option. The system modules now only wire behavior.
+  srvos remains the attribution source in the file headers.
+- **`stateVersion` centralized.** `mine.system.stateVersion` (null default, leaf overrides per host) and
+  a derived read-only `mine.system.stateVersionFinal` (core default `"25.05"` when unset) replace the
+  hard-coded `"25.05"` that lived in `mkNixosHost`→`users.nix`, `mkHomeConfig`, and `mkDarwinHost`.
+  NixOS base (`system.stateVersion`), the integrated HM wiring (`home.stateVersion`), standalone HM, and
+  the darwin builder all consume `stateVersionFinal` via `lib.mkDefault`, so a leaf can still set
+  `system.stateVersion` / `home.stateVersion` directly. **A warning is emitted at build time when a host
+  leaves `mine.system.stateVersion` unset** (guarded by `config ? warnings` so it is safe on module
+  systems without that option). All three leaf hosts now set it, demonstrating the encouraged pattern.
+- **`builder.nix` darwin branch deferred, not removed.** The `pkgs.stdenv.isDarwin` arm is currently
+  unreachable because the module is only imported by `nixos.base`. It is documented in the module and
+  wired into a darwin base as part of M4 once darwin hosts exist to exercise it (see Open questions).
+- **`mkDeploy` leaf API is broken-by-design; fixing it is the next implementation step (M3).** See the
+  dedicated section below.
+- **Observation: `mine.system.updateDiff.text` is composed but not yet consumed.** The srvos port sets
+  the diff script but nothing wires it into activation (the srvos original consumes `text` elsewhere).
+  Keeping behavior identical for now; wiring it into activation is a follow-up.
+
+### `mkDeploy` leaf API — known issues and next step
+
+`lib/mkDeploy.nix` is scaffolding from M1 and does not yet have a workable leaf-facing API:
+
+- **Awkward return shape.** It returns a merge-set `{ deploy = nodes; checks = deployChecks nodes; }`.
+  A leaf needs both `config.flake.deploy` and `perSystem.checks` (the deploy-rs checks), so it must call
+  `mkDeploy` twice (once per output) or capture the result — easy to get wrong, and the two call sites can
+  drift.
+- **`options.flake.deploy` is dead surface.** `modules/flake-module.nix` declares `flake.deploy` but the
+  builder never writes to it.
+- **Checks transposition.** `deployChecks` produces a per-system checks set, but a plain builder function
+  cannot write `config.perSystem.checks`; the leaf has to wire it manually.
+- **Direction of the fix.** The "builders as flake-parts modules" idea from the parallel-implementation
+  notes is the natural fit: a `mkDeploy` module could set `config.flake.deploy` and
+  `config.perSystem.checks` directly and be auto-discovered alongside the other builders.
+
+**Next step in implementation:** fix `mkDeploy` as the first item of Milestone 3 (deployment), before the
+`personal/deploy.nix` wiring.
+
 ### Migration M1 — system modules, `nixos/base.nix`, color-scheme, multi-user framework
 
 Completed the M1 port: `modules/system/*`, `modules/nixos/base.nix`, and the molokai/base16 color-scheme
@@ -264,6 +311,9 @@ Goal: the shared development-tooling modules that all machines reuse.
 
 Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
 
+- [ ] **Fix `mkDeploy`'s leaf API first** (see implementation log: the builder currently returns a
+      merge-set the leaf must split across `config.flake.deploy` and `perSystem.checks`; prefer
+      builders-as-flake-parts-modules so it writes both directly). Then wire `personal/deploy.nix`.
 - [ ] `personal/features/`: tailscale fleet module (enabled via `mine.network.tailscale.enable`), VPN,
       hostname/network policy for the personal network, backup/media services as needed.
 - [ ] Personal hosts: `aurora` (desktop), `lapis` (laptop), `hylas` (server, `server` profile + disko),
@@ -376,6 +426,16 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 - [ ] **disko layout**: server partitioning/impermanence specifics.
 - [ ] **Deployment of HM-only work laptop**: confirm SSH reachability / `home-manager switch` locally
       inside WSL before deploy-rs.
+- [ ] **mkDeploy leaf API**: the builder returns `{deploy; checks}`, which a leaf must split across
+      `config.flake.deploy` and `perSystem.checks` (call twice / capture); `options.flake.deploy` is
+      unused; `deployChecks` transposition can't be written by a plain function. Fix as the first M3
+      item, likely via builders-as-flake-parts-modules. See the implementation log section "mkDeploy leaf
+      API — known issues and next step".
+- [ ] **builder.nix on darwin**: `system/builder.nix` has an `isDarwin` branch for the linux-builder VM
+      user that is unreachable today (module only imported by `nixos.base`). Wire it into a darwin base as
+      part of M4, when darwin hosts exist to exercise it.
+- [ ] **update-diff activation**: `mine.system.updateDiff.text` is composed but not yet consumed by any
+      activation hook (the srvos original wires it elsewhere). Decide whether to wire it or drop it.
 
 ---
 

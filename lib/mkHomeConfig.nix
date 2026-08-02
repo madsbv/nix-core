@@ -18,12 +18,21 @@ in
 inputs.home-manager.lib.homeManagerConfiguration {
   inherit pkgs;
   modules = [
-    {
-      home = {
-        inherit username homeDirectory;
-        stateVersion = lib.mkDefault "25.05";
-      };
-    }
+    (
+      {
+        config,
+        lib,
+        ...
+      }:
+      {
+        home = {
+          inherit username homeDirectory;
+          # Resolved from `mine.system.stateVersion` (core default unless the
+          # leaf overrides); leaves may still set `home.stateVersion` directly.
+          stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
+        };
+      }
+    )
   ]
   ++ profilesHm
   ++ modules

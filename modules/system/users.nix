@@ -47,7 +47,7 @@ in
           inherit (config) mine;
         }
         {
-          home.stateVersion = lib.mkDefault "25.05";
+          home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
         }
       ]
       ++ u.homeManagerModules;

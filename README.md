@@ -189,6 +189,8 @@ Core declares options such as:
   resolves to the *current* user
 - `mine.location.timezone`, `mine.location.latitude`, `mine.location.longitude`
 - `mine.network.tailscale.enable`
+- `mine.system.stateVersion` — per-host NixOS/Home Manager stateVersion override; when unset core falls
+  back to its default (`25.05`) and warns at build time. Set it per host so upgrades are intentional.
 
 Each leaf host supplies an `identity.nix` that sets these. The users framework
 (`modules/system/users.nix`) turns `mine.users` into NixOS users and per-user Home Manager configs:

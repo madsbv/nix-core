@@ -20,6 +20,11 @@ in
         group = "builders";
         openssh.authorizedKeys.keys = cfg.authorizedKeys;
       }
+      # Darwin-specific shape for the linux-builder VM user. NOTE: this branch
+      # is currently unreachable — this module is only imported by `nixos.base`,
+      # so it only ever evaluates in a NixOS eval (isDarwin = false). Wiring it
+      # into a darwin base is deferred until the darwin hosts land (M4), where
+      # it can be exercised; see PLAN.md.
       // lib.mkIf pkgs.stdenv.isDarwin {
         isHidden = false;
         uid = 42;
