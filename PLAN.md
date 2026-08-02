@@ -75,6 +75,38 @@ leaf proving cross-repo consumption.
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
 
+### Builder auto-discovery, identity mirror, and feature profiles
+
+Adopted three improvements from the parallel implementation review:
+
+- **Builders are now auto-discovered flake-parts modules.** Every `.nix` file under `lib/` (except
+  `load.nix`) is curried over core's pinned `{ inputs, lib }` and imported as a flake-parts module that
+  self-registers on `config.flake.lib`. The framework no longer instantiates builders explicitly in
+  `flake-module.nix` — add a new builder file and it's picked up automatically. This also fixes the
+  `mkDeploy` leaf API: `mkDeploy` returns a flake-parts module fragment `{ flake.deploy = nodes;
+  perSystem = fn; }` that writes the deploy output and per-system deploy-rs checks directly; the leaf
+  spreads it into its module body with `let deploy = config.flake.lib.mkDeploy {...}; in { inherit
+  (deploy) perSystem; flake.deploy = deploy.flake.deploy; }`.
+
+- **Identity mirror auto-derived from the option surface.** `modules/_hm-mirror.nix` replaces the
+  previous `{ inherit (config) mine; }` wholesale copy in `modules/system/users.nix` and
+  `lib/mkDarwinHost.nix`. It walks the HM evaluation's `options.mine` and prunes the system-side
+  `mine` values to only those the HM eval actually declares. System-only `mine.*` options can now be
+  declared in system modules without breaking HM evals. The prune function handles individual options,
+  plain option groups (recursed), and submodule options (treated as leaves — `_type == "option"` guard
+  prevents descending into option-definition attrsets like `config`/`readOnly`/`default`).
+
+- **Feature profiles as class-keyed aggregates.** `modules/profiles/shell.nix` and
+  `modules/profiles/dev.nix` join the existing `base.nix` profile. Each is a class-keyed `{ nixos;
+  homeManager; darwin; }` module list. Leaves compose via profile names instead of manually listing
+  individual feature modules — e.g. `profiles = [ config.flake.profiles.base config.flake.profiles.dev
+  ]` replaces `homeManager = [ git.nix ssh.nix ... ]`. The pattern scales cleanly as more feature
+  modules land.
+
+- **Core's pinned inputs re-exported.** `config.flake.inputs` now exposes core's pinned flake inputs,
+  letting leaves reference transitive inputs (e.g. `config.flake.inputs.disko.nixosModules.disko`)
+  without declaring them as their own flake inputs.
+
 ### Review follow-ups — `srvos.*` → `mine.*`, centralized `stateVersion`, darwin deferral, `mkDeploy` API
 
 Review-driven cleanup after the M1 migration:
@@ -103,24 +135,28 @@ Review-driven cleanup after the M1 migration:
   the diff script but nothing wires it into activation (the srvos original consumes `text` elsewhere).
   Keeping behavior identical for now; wiring it into activation is a follow-up.
 
-### `mkDeploy` leaf API — known issues and next step
+### `mkDeploy` leaf API — resolved
 
-`lib/mkDeploy.nix` is scaffolding from M1 and does not yet have a workable leaf-facing API:
+`mkDeploy` is now an auto-discovered flake-parts module. It returns a module fragment
+`{ flake.deploy = nodes; perSystem = { system, ... }: { checks = ...; }; }` that writes the deploy
+output and per-system deploy-rs checks directly. The leaf spreads it into its module body via a
+`let`-binding (not `//` — the `//` operator forces `config` during module-body evaluation, which
+recurses in flake-parts):
 
-- **Awkward return shape.** It returns a merge-set `{ deploy = nodes; checks = deployChecks nodes; }`.
-  A leaf needs both `config.flake.deploy` and `perSystem.checks` (the deploy-rs checks), so it must call
-  `mkDeploy` twice (once per output) or capture the result — easy to get wrong, and the two call sites can
-  drift.
-- **`options.flake.deploy` is dead surface.** `modules/flake-module.nix` declares `flake.deploy` but the
-  builder never writes to it.
-- **Checks transposition.** `deployChecks` produces a per-system checks set, but a plain builder function
-  cannot write `config.perSystem.checks`; the leaf has to wire it manually.
-- **Direction of the fix.** The "builders as flake-parts modules" idea from the parallel-implementation
-  notes is the natural fit: a `mkDeploy` module could set `config.flake.deploy` and
-  `config.perSystem.checks` directly and be auto-discovered alongside the other builders.
+```nix
+let
+  deployModule = config.flake.lib.mkDeploy { system = ...; nodes = { <host> = {... }; };
+in
+{
+  flake.nixosConfigurations.<host> = ...;
+  inherit (deployModule) perSystem;
+  flake.deploy = deployModule.flake.deploy;
+}
+```
 
-**Next step in implementation:** fix `mkDeploy` as the first item of Milestone 3 (deployment), before the
-`personal/deploy.nix` wiring.
+`options.flake.deploy` is now consumed by mkDeploy's fragment and no longer dead surface. The
+builders-as-flake-parts-modules approach makes each builder self-registering and auto-discovered;
+see the implementation log entry "Builder auto-discovery".
 
 ### Migration M1 — system modules, `nixos/base.nix`, color-scheme, multi-user framework
 
@@ -757,26 +793,25 @@ before the next item.
 ## Notes from the parallel implementation
 
 These capture ideas and findings surfaced while reviewing a parallel implementation of the
-same architecture. They are written as ideas and motivations, not as concrete code or module
-names, so they can be evaluated on their own merits.
+same architecture. Entries marked **[adopted]** have been implemented.
 
-- **Mirror identity values into the Home Manager evaluation.** On NixOS/nix-darwin hosts,
+- **[adopted] Mirror identity values into the Home Manager evaluation.** On NixOS/nix-darwin hosts,
   Home Manager evaluates in its own module system: values set for `mine.*` in the system
   evaluation are not visible to feature modules inside the HM evaluation. The host wiring
   must explicitly re-define the `mine.*` values in the HM evaluation, mirroring the system
-  values, for value-driven features (AD-4) to work in integrated mode. Consider generating
-  the mirrored field list from the declared options rather than hard-coding it, so that
-  adding a new `mine.*` subtree flows through automatically. Motivation: identity injection
-  only functions in the integrated HM path if this copy exists, and a hard-coded copy list
-  drifts silently.
-- **Builders as flake-parts modules.** The builders are currently plain library functions
-  with their dependencies threaded in from the framework module. An alternative style is to
-  implement each builder as a flake-parts module itself, so it receives the flake's
-  assembled outputs and can reference complete per-class module sets directly — e.g. attach
-  every Home Manager module of a class in one step — and be auto-discovered when added.
-  Motivation: this removes the manual dependency threading in the framework module and keeps
-  builders automatically in sync with whatever the framework registers; the trade-off is
-  that the builders then only exist inside a flake-parts evaluation.
+  values, for value-driven features (AD-4) to work in integrated mode. The mirrored field list
+  is now derived from the declared options via `modules/_hm-mirror.nix` (a prune-based walk of
+  `options.mine` in the HM eval), so adding a new `mine.*` subtree flows through automatically.
+  Motivation: identity injection only functions in the integrated HM path if this copy exists,
+  and a hard-coded copy list drifts silently.
+- **[adopted] Builders as flake-parts modules.** The builders are now flake-parts modules
+  auto-discovered from `lib/`, each self-registering on `config.flake.lib`. They are curried
+  over core's pinned `{ inputs, lib }` (preserving the invariant that core's inputs are used,
+  not the leaf's). Dependencies on `config.flake.profiles.*` / `config.flake.modules.*` are
+  resolved from the flake-parts module body, which merges all modules before evaluation.
+  Motivation: this removes the manual dependency threading in the framework module, keeps
+  builders automatically in sync with whatever the framework registers, and fixes `mkDeploy`'s
+  leaf API (the builder can now return a module fragment with `flake.deploy` + `perSystem`).
 - **Port by semantics, not by wiring.** When porting an old module, judge it on its contents
   and what it configures, not on whether it currently builds or what its preset/wrapper
   plumbing looks like — that wiring is being replaced wholesale. Decide each module's

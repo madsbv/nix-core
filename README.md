@@ -97,20 +97,21 @@ notes in PLAN.md).
 
 ---
 
-## Core layout (planned)
+## Core layout
 
 ```
 core/
 ├── flake.nix                 # thin entry point; flake-parts + curried framework/devShell
 ├── modules/
-│   ├── flake-module.nix      # framework: flake-parts + auto module loader + builders
+│   ├── flake-module.nix      # framework: flake-parts + auto-loader + builder discovery
 │   ├── options.nix           # declares mine.* options (no defaults)
 │   ├── agenix.nix            # agenix(-rekey) wiring, per class (nixos + homeManager + darwin)
 │   ├── base.nix              # composites: nixos.base / darwin.base / homeManager.base
 │   ├── color-scheme.nix      # base16 nixos/homeManager/darwin modules, default molokai
 │   ├── treefmt.nix           # nixfmt / statix / deadnix, wired into `nix flake check`
 │   ├── devShell.nix          # core dev shell (curried over core's inputs)
-│   ├── profiles/             # role aggregates: base, shell, dev, editors, desktop, server, headless
+│   ├── _hm-mirror.nix        # helper: prune-based identity mirror for Home Manager evals
+│   ├── profiles/             # role aggregates: base, shell, dev (class-keyed modules)
 │   ├── features/             # cross-class features, one file per capability
 │   │   ├── editors/          #   emacs.nix, nixvim.nix, vscode.nix
 │   │   ├── dev/              #   git.nix, gh.nix, ssh.nix, direnv.nix, toolchains
@@ -122,16 +123,21 @@ core/
 │   ├── system/               # keys, builder, users framework, update-diff, register-flake, ...
 │   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...)
 │   # (no darwin/: darwin-specific config lives in personal — see the migration amendment)
-├── lib/                      # builder functions + deploy integration
-│   ├── load.nix              # import-tree auto-loader
-│   ├── mkNixosHost.nix
-│   ├── mkDarwinHost.nix      # shared NixOS/darwin wiring only; no darwin system modules
-│   ├── mkHomeConfig.nix
-│   └── mkDeploy.nix
+├── lib/                      # builder functions + deploy integration (auto-discovered)
+│   ├── load.nix              # import-tree auto-loader (excluded from builder discovery)
+│   ├── mkNixosHost.nix       # registered as config.flake.lib.mkNixosHost
+│   ├── mkDarwinHost.nix      # registered as config.flake.lib.mkDarwinHost
+│   ├── mkHomeConfig.nix      # registered as config.flake.lib.mkHomeConfig
+│   └── mkDeploy.nix          # registered as config.flake.lib.mkDeploy
 ├── pkgs/                     # shared custom packages
 ├── README.md
 └── PLAN.md
 ```
+
+All `.nix` files under `lib/` (except `load.nix`) are auto-discovered builder modules — adding a
+new builder file is all it takes to register it on `config.flake.lib`. Core's pinned flake inputs
+are re-exported as `config.flake.inputs`, so leaves can reference transitive inputs (e.g.
+`config.flake.inputs.disko.nixosModules.disko`) without declaring them.
 
 ### Feature module pattern
 

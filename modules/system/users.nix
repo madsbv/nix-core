@@ -39,13 +39,13 @@ in
 
   # Home Manager, when present (always for builder-built hosts): per-user
   # config with the system evaluation's `mine` values mirrored into the nested
-  # Home Manager evaluation (see lib/mkNixosHost.nix).
+  # Home Manager evaluation via `modules/_hm-mirror.nix` (pruned to the options
+  # the HM eval actually declares, so system-only `mine.*` options can't break
+  # HM evals).
   home-manager.users = lib.mkIf (config ? home-manager) (
     lib.mapAttrs (_name: u: {
       imports = [
-        {
-          inherit (config) mine;
-        }
+        (import ../_hm-mirror.nix { osMine = config.mine; })
         {
           home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
         }
