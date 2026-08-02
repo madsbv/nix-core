@@ -496,8 +496,11 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 - **Core keeps a small nix-darwin builder**, `lib/mkDarwinHost.nix`, parallel to `lib/mkNixosHost.nix`.
   It wires the parts of the core featureset shared between NixOS and nix-darwin — the `mine.*` options
   module, agenix, and the core HM features (git, shell, dev, editors, terminal, ssh) — into a
-  `darwinSystem`. Core pins `nix-darwin` (AD-6). **No darwin-specific system modules live in core.**
-- **All darwin-specific config is personal**: homebrew/nix-homebrew, dock, autorestic, the
+  `darwinSystem`. Core pins `nix-darwin` (AD-6). **nix-homebrew is a core concern** — the
+  `modules/darwin/homebrew.nix` module imports `nix-homebrew.darwinModules.nix-homebrew` and declares
+  `mine.darwin.brew.*` options (taps, brews, casks). Leaves supply tap inputs and package lists;
+  core handles the wiring.
+- **Remaining darwin-specific config is personal**: dock, autorestic, the
   yabai/skhd/sketchybar/karabiner window-management stack, and macOS system defaults. `mbv-mba`
   composes `core.lib.mkDarwinHost` + personal darwin features.
 
@@ -738,8 +741,7 @@ before the next item.
 - [ ] `features/protonvpn` (from `nixosModules/protonvpn`).
 - [ ] `features/media-server` (from `nixosModules/media-server/{jellyfin,transmission,ripping}`).
 - [ ] `features/home-assistant` (from `nixosModules/home-assistant` + appdaemon apps).
-- [ ] Darwin (personal features on top of `core.lib.mkDarwinHost`): `features/darwin/homebrew`
-      (nix-homebrew + casks), `features/darwin/dock` (from `darwinModules/dock`),
+- [ ] Darwin (personal features on top of `core.lib.mkDarwinHost`): `features/darwin/dock` (from `darwinModules/dock`),
       `features/darwin/autorestic` (from `darwinModules/autorestic`), `features/darwin/window-mgmt`
       (yabai/skhd/sketchybar/karabiner from `mbv-mba/nix-darwin` + `config/`), macOS system defaults.
 - [ ] Bring up hosts in order as their module set lands (hardware-configuration, disko, configuration,

@@ -122,7 +122,7 @@ core/
 │   │   └── desktop.nix       #   generic desktop bits, platform-guarded
 │   ├── system/               # keys, builder, users framework, update-diff, register-flake, ...
 │   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...)
-│   # (no darwin/: darwin-specific config lives in personal — see the migration amendment)
+│   ├── darwin/               # darwin-only: homebrew.nix (nix-homebrew wiring)
 ├── lib/                      # builder functions + deploy integration (auto-discovered)
 │   ├── load.nix              # import-tree auto-loader (excluded from builder discovery)
 │   ├── mkNixosHost.nix       # registered as config.flake.lib.mkNixosHost
