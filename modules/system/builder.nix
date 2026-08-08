@@ -3,10 +3,14 @@
 # list for using other fleet nodes as remote builders. Option declarations
 # live in `modules/options.nix`; this module only wires the behavior. All
 # node/host specifics are leaf-supplied via `mine.remoteBuilder`.
+#
+# Platform-specific builder-user properties are split into separate modules
+# (builder-darwin.nix for the darwin linux-builder VM user, the NixOS group is
+# inlined in modules/base.nix) so the module system — not inline `isDarwin`
+# checks — routes behavior to the right platform.
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 let
@@ -19,23 +23,10 @@ in
         isSystemUser = true;
         group = "builders";
         openssh.authorizedKeys.keys = cfg.authorizedKeys;
-      }
-      # Darwin-specific shape for the linux-builder VM user. NOTE: this branch
-      # is currently unreachable — this module is only imported by `nixos.base`,
-      # so it only ever evaluates in a NixOS eval (isDarwin = false). Wiring it
-      # into a darwin base is deferred until the darwin hosts land (M4), where
-      # it can be exercised; see PLAN.md.
-      // lib.mkIf pkgs.stdenv.isDarwin {
-        isHidden = false;
-        uid = 42;
-        gid = 42;
-        home = "/var/nix-builder";
       };
-      users.groups.builders = lib.mkIf pkgs.stdenv.isLinux { };
     })
     (lib.mkIf cfg.enableRemoteBuilders {
       nix.buildMachines = cfg.buildMachines;
-      # Avoid long stalls when remote builders are unreachable.
       programs.ssh.extraConfig = ''
         ConnectTimeout = 10
         ServerAliveInterval = 5

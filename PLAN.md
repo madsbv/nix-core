@@ -468,9 +468,9 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
       unused; `deployChecks` transposition can't be written by a plain function. Fix as the first M3
       item, likely via builders-as-flake-parts-modules. See the implementation log section "mkDeploy leaf
       API — known issues and next step".
-- [ ] **builder.nix on darwin**: `system/builder.nix` has an `isDarwin` branch for the linux-builder VM
-      user that is unreachable today (module only imported by `nixos.base`). Wire it into a darwin base as
-      part of M4, when darwin hosts exist to exercise it.
+- [x] **builder.nix on darwin**: resolved — the `isDarwin` branch was split into a separate
+      `builder-darwin.nix` module, imported only by `darwin.base`. The common `builder.nix` module is
+      imported by both `nixos.base` and `darwin.base`.
 - [ ] **update-diff activation**: `mine.system.updateDiff.text` is composed but not yet consumed by any
       activation hook (the srvos original wires it elsewhere). Decide whether to wire it or drop it.
 
@@ -706,8 +706,8 @@ surface immediately.
 
 ### M2 — Core-bound modules, one per checklist item
 
-> Status: **mostly done** — toolchains, editors, terminal, and profiles all built. `tailscale`,
-> `yubikey`, and `laptop` features remain pending (prerequisites for M3 personal hosts).
+> Status: **nearly done** — toolchains, editors, terminal, profiles, tailscale, yubikey all built.
+> Only `laptop` feature remains (reserved for future machine).
 
 Each item ports one module/feature → one core file, adapting `local.*` → `mine.*`, `flake-root` →
 relative refs, `specialArgs` → options. Verified (scratch host + standalone HM + `nix flake check`)
@@ -719,9 +719,10 @@ before the next item.
 - [x] `features/editors/neovim.nix` (implemented via nixvim: `neovim.nix` + curried `_nixvim.nix`).
 - [x] `features/editors/emacs.nix` (wires `services.emacs`; DOOMDIR builder deferred).
 - [x] `features/terminal.nix` (alacritty + JetBrains Mono, written fresh).
-- [ ] `features/tailscale.nix` (from `nixosModules/tailscale`; driven by `mine.network.tailscale.enable`;
-      authkey from leaf). Option declared; module not yet built.
-- [ ] `features/yubikey.nix` (from `nixosModules/yubikey`).
+- [x] `features/tailscale.nix` (NixOS + darwin `services.tailscale` with `--ssh`; HM packages CLI;
+      `mine.network.tailscale.authKeyFile` for pre-shared-key hosts).
+- [x] `features/yubikey.nix` (NixOS + darwin `services.yubikey-agent` + CLI tools; HM packages CLI).
+      Personal secrets infrastructure created in the leaf (pubkeys, encrypted files, `secrets.nix`).
 - [ ] `features/laptop.nix` (from `nixosModules/laptop`; reserved for a future laptop).
 - [x] Core profiles: `modules/profiles/{base,system,shell,dev-base,dev,editors,terminal}` aggregates.
 
