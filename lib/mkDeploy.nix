@@ -4,9 +4,10 @@
 # flake-parts module that registers `mkDeploy` on `config.flake.lib`
 # (auto-discovered from `lib/` by the framework).
 #
-# `mkDeploy` returns a module fragment ({ flake.deploy; perSystem; }) that
-# the leaf spreads at the module body level (not via `imports` — the Nix
-# module system evaluates `imports` before `config` is available):
+# `mkDeploy` returns `{ flake.deploy = nodes; }` — the deploy node map that
+# the leaf exposes as a top-level flake output. Leaves wire it at the module
+# body level (not via `imports` — the Nix module system evaluates `imports`
+# before `config` is available):
 #
 #   { config, ... }:
 #   let
@@ -14,27 +15,21 @@
 #     deploy = config.flake.lib.mkDeploy { system = "x86_64-linux"; nodes = { ... }; };
 #   in {
 #     flake.nixosConfigurations.foo = host;
-#     inherit (deploy) perSystem;
 #     flake.deploy = deploy.flake.deploy;
 #   }
 #
-# flake-parts merges the `perSystem` function and `flake.deploy` values from
-# all modules, so the spread integrates cleanly.
-{ inputs, lib }:
-_: {
+# deploy-rs activation checks are not wired here — they currently cause
+# infinite recursion when evaluated inside a flake-parts `perSystem` block
+# (the checks force the NixOS config derivation, which forces `config.flake.*`
+# referenced by the profile modules, which triggers re-evaluation of the
+# module body that holds `mkDeploy`). Wire checks explicitly in the leaf if
+# needed.
+_: _: {
   flake.lib.mkDeploy =
     {
-      system,
       nodes ? { },
     }:
     {
       flake.deploy = nodes;
-      perSystem =
-        { system', ... }:
-        {
-          checks = lib.mkIf (system' == system) (
-            inputs.deploy-rs.lib.${system}.deployChecks { inherit nodes; }
-          );
-        };
     };
 }
