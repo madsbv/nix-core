@@ -347,27 +347,27 @@ Goal: the shared development-tooling modules that all machines reuse.
 
 Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
 
-- [ ] **Fix `mkDeploy`'s leaf API first** (see implementation log: the builder currently returns a
-      merge-set the leaf must split across `config.flake.deploy` and `perSystem.checks`; prefer
-      builders-as-flake-parts-modules so it writes both directly). Then wire `personal/deploy.nix`.
+- [x] **Fix `mkDeploy`'s leaf API** — resolved in `ae8fad6` via builders-as-flake-parts-modules;
+      the scaffold already uses the new pattern (see implementation log).
 - [ ] `personal/features/`: tailscale fleet module (enabled via `mine.network.tailscale.enable`), VPN,
       hostname/network policy for the personal network, backup/media services as needed.
-- [ ] Personal hosts: `aurora` (desktop), `lapis` (laptop), `hylas` (server, `server` profile + disko),
-      `onyx` (Mac, `mkDarwinHost`).
+- [ ] Personal hosts: `mbv-workstation` (desktop), `mbv-desktop` (media server + CUDA), `mbv-xps13`
+      and `hp-90` (headless servers, `server` profile + disko), `mbv-mba` (Mac, `mkDarwinHost`).
 - [ ] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), `identities/`
       (YubiKey `.pub`), `rekeyed/` (committed), encrypted `.age` files; generators for server secrets
       (WireGuard keys, service passwords, htpasswd).
-- [ ] Wire `core.modules/agenix.nix` to read master identities and per-host `hostPubkey` from the leaf,
-      and to attach agenix-rekey module to every host.
-- [ ] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for desktop, laptop, servers, Mac; checks
-      wired into `nix flake check`.
+- [x] Wire `core.modules/agenix.nix` to read master identities and per-host `hostPubkey` from the leaf,
+      and to attach agenix-rekey module to every host. (Already wired — options declared in
+      `modules/options.nix`, consumed by `modules/agenix.nix`.)
+- [ ] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for all 5 personal hosts; checks wired
+      into `nix flake check`.
 - [ ] `justfile`: `switch <host>`, `update` (`nix flake update core`), `rekey`, `deploy <node>`,
       `edit-secret <name>`.
 - [ ] Document server bootstrap (nixos-anywhere + disko) in the leaf README.
 
 **Acceptance criteria**
 
-- `just deploy hylas` deploys the server from a fresh state using dummy-pubkey bootstrap then real
+- `just deploy <server>` deploys a server from a fresh state using dummy-pubkey bootstrap then real
   host key rekeying.
 - Secrets decrypt at activation into `/run/agenix`; services read from those paths.
 - `nix flake check` passes in `personal` without a YubiKey plugged in (rekeyed outputs are committed).
@@ -381,13 +381,13 @@ Goal: the Mac host fully working, exercising the darwin side of the framework.
 - [ ] Complete `lib/mkDarwinHost.nix`: wire `nix-darwin` `darwinSystem`, home-manager-as-darwin-module,
       core darwin base, `mine.*` options module.
 - [ ] `core/modules/darwin/`: homebrew (nix-homebrew), aerospace, macOS system defaults.
-- [ ] `personal/hosts/onyx/`: identity + darwin-specific config.
+- [ ] `personal/hosts/mbv-mba/`: identity + darwin-specific config.
 - [ ] Platform-guard audit: ensure darwin-only features (`darwin.*`) and linux-only features
       (`nixos.*`) never cross-contaminate.
 
 **Acceptance criteria**
 
-- `darwin-rebuild switch --flake .#onyx` (or deploy-rs) works on the Mac.
+- `darwin-rebuild switch --flake .#mbv-mba` (or deploy-rs) works on the Mac.
 - A core feature like `git` or `emacs` behaves identically on the Mac and on NixOS.
 
 ---
@@ -505,7 +505,7 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 
 ## Decisions recorded (confirmed with the operator)
 
-- **Hostnames stay `mbv-*`** — no rename to aurora/lapis/hylas/onyx. Preserves host keys, `rekeyed/`
+- **Hostnames stay `mbv-*`** — preserves host keys, `rekeyed/`
   paths, deploy-rs config, tailnet identity, DNS.
 - **No dedicated laptop** — current fleet is desktop + 3 servers + Mac; `lapis` is reserved for a future
   machine, and `features/laptop.nix` is ported but only enabled then.
@@ -706,20 +706,24 @@ surface immediately.
 
 ### M2 — Core-bound modules, one per checklist item
 
+> Status: **mostly done** — toolchains, editors, terminal, and profiles all built. `tailscale`,
+> `yubikey`, and `laptop` features remain pending (prerequisites for M3 personal hosts).
+
 Each item ports one module/feature → one core file, adapting `local.*` → `mine.*`, `flake-root` →
 relative refs, `specialArgs` → options. Verified (scratch host + standalone HM + `nix flake check`)
 before the next item.
 
-- [ ] `features/dev` toolchains, one per item: fortran, git (lfs), github, go, java, javascript, lua,
-      nix, python, R, rust, shell (dev), tools → `features/dev/<name>.nix`.
-- [ ] `features/editors/neovim.nix` (from `homeManagerModules/neovim`).
-- [ ] `features/editors/emacs.nix` (from `homeManagerModules/emacs`).
-- [ ] `features/terminal.nix` (from `homeManagerModules/terminal` + `config/kitty`).
+- [x] `features/dev` toolchains, one per item: fortran, git, gh, go, java, javascript, lua,
+      nix, python, R, rust, shell (dev), tools → `features/dev/<name>.nix`. All 13 built fresh;
+      adapts `local.*` → `mine.*`.
+- [x] `features/editors/neovim.nix` (implemented via nixvim: `neovim.nix` + curried `_nixvim.nix`).
+- [x] `features/editors/emacs.nix` (wires `services.emacs`; DOOMDIR builder deferred).
+- [x] `features/terminal.nix` (alacritty + JetBrains Mono, written fresh).
 - [ ] `features/tailscale.nix` (from `nixosModules/tailscale`; driven by `mine.network.tailscale.enable`;
-      authkey from leaf).
+      authkey from leaf). Option declared; module not yet built.
 - [ ] `features/yubikey.nix` (from `nixosModules/yubikey`).
 - [ ] `features/laptop.nix` (from `nixosModules/laptop`; reserved for a future laptop).
-- [ ] Core profiles: `modules/profiles/{base,shell,dev,editors}` aggregates.
+- [x] Core profiles: `modules/profiles/{base,system,shell,dev-base,dev,editors,terminal}` aggregates.
 
 **Acceptance criteria**
 

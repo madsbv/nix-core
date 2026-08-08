@@ -42,6 +42,7 @@ in
     (import ./color-scheme.nix { inherit inputs; })
     (import ./features/editors/_nixvim.nix { inherit inputs; })
     (import ./darwin/homebrew.nix { inherit inputs; })
+    (import ./features/dev/_direnv.nix { inherit inputs; })
     (import ./features/dev/_rust.nix { inherit inputs; })
   ]
   ++ features

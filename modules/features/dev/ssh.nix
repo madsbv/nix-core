@@ -9,14 +9,14 @@ _: {
       programs.ssh = {
         enable = true;
         enableDefaultConfig = false;
-        settings."*" = {
-          ServerAliveInterval = 0;
-          ServerAliveCountMax = 3;
-          HashKnownHosts = false;
-          UserKnownHostsFile = "~/.ssh/known_hosts";
-        };
-        matchBlocks = {
-          "github.com" = {
+        settings = {
+          "*" = {
+            ServerAliveInterval = 0;
+            ServerAliveCountMax = 3;
+            HashKnownHosts = false;
+            UserKnownHostsFile = "~/.ssh/known_hosts";
+          };
+          "github.com" = lib.mkDefault {
             hostname = "github.com";
             identitiesOnly = true;
           };
