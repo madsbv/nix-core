@@ -1,8 +1,11 @@
-{ inputs }:
-# Curried over core's pinned inputs (applied in `flake.nix`): `inputs` in a
-# flake-parts module function would be the *leaf's* inputs when core is consumed
-# as a flake module, which don't include deploy-rs / agenix-rekey. Same closure
-# pattern as `modules/agenix.nix`.
+# Development shell with tooling for the entire fleet: just, git, formatting
+# (nixfmt/statix/deadnix), agenix-rekey (secrets management), and deploy-rs.
+# Uses `config.flake.inputs` (core's pinned inputs re-exported by the framework)
+# so it works identically when consumed by core itself or by a leaf.
+{
+  config,
+  ...
+}:
 {
   perSystem =
     { pkgs, system, ... }:
@@ -16,8 +19,8 @@
           nixfmt
           statix
           deadnix
-          inputs.deploy-rs.packages.${system}.default
-          inputs.agenix-rekey.packages.${system}.default
+          config.flake.inputs.deploy-rs.packages.${system}.default
+          config.flake.inputs.agenix-rekey.packages.${system}.default
         ];
       };
     };

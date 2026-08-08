@@ -44,6 +44,9 @@ in
     (import ./darwin/homebrew.nix { inherit inputs; })
     (import ./features/dev/_direnv.nix { inherit inputs; })
     (import ./features/dev/_rust.nix { inherit inputs; })
+    # devShell uses `config.flake.inputs` (core's re-exported inputs) instead of
+    # currying — it needs to work identically in core and in leaves.
+    ./devShell.nix
   ]
   ++ features
   ++ profiles
