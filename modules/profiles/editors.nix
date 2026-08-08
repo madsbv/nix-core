@@ -1,7 +1,7 @@
 { config, ... }:
 {
   flake.profiles.editors = {
-    nixos = [ ];
+    nixos = [ config.flake.modules.nixos.neovim ];
     homeManager = [
       config.flake.modules.homeManager.emacs
       config.flake.modules.homeManager.nixvim

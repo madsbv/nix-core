@@ -2,7 +2,7 @@
 { config, ... }:
 {
   flake.profiles.shell = {
-    nixos = [ ];
+    nixos = [ config.flake.modules.nixos.shell ];
     homeManager = [ config.flake.modules.homeManager.shell ];
     darwin = [ ];
   };

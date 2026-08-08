@@ -4,11 +4,7 @@
     nixos = [
       config.flake.modules.nixos.docker
     ];
-    homeManager = [
-      config.flake.modules.homeManager.git
-      config.flake.modules.homeManager.ssh
-      config.flake.modules.homeManager.gh
-      config.flake.modules.homeManager.direnv
+    homeManager = config.flake.profiles.dev-base.homeManager ++ [
       config.flake.modules.homeManager.python
       config.flake.modules.homeManager.shell-dev
       config.flake.modules.homeManager.go
@@ -19,7 +15,6 @@
       config.flake.modules.homeManager.nix-dev
       config.flake.modules.homeManager.fortran
       config.flake.modules.homeManager.R
-      config.flake.modules.homeManager.dev-tools
     ];
     darwin = [
       config.flake.modules.darwin.docker

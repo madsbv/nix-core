@@ -5,8 +5,9 @@
 # these composites (e.g. color-scheme).
 #
 # Curried over core's pinned `inputs` (same pattern as `modules/agenix.nix`):
-# `modules/nixos/base.nix` imports `inputs.impermanence`, which must resolve to
-# core's input, not a leaf's.
+# `modules/nixos/base.nix` references `config.mine.*` which is declared in
+# `options.nix`; the minimal `nixos/base.nix` no longer imports impermanence —
+# that now lives in `profiles/system.nix`.
 { inputs }:
 {
   config,

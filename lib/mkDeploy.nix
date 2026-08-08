@@ -4,19 +4,22 @@
 # flake-parts module that registers `mkDeploy` on `config.flake.lib`
 # (auto-discovered from `lib/` by the framework).
 #
-# Unlike the NixOS/darwin/HM builders, `mkDeploy` does not return a system
-# config — it returns a *flake-parts module fragment* that writes the `deploy`
-# output and the deploy-rs checks directly. A leaf merges it into its module
-# body with `//` (or spreads it), exactly once per flake:
+# `mkDeploy` returns a module fragment ({ flake.deploy; perSystem; }) that
+# the leaf spreads at the module body level (not via `imports` — the Nix
+# module system evaluates `imports` before `config` is available):
 #
 #   { config, ... }:
-#   (config.flake.lib.mkDeploy { system = "x86_64-linux"; nodes = { ... }; })
-#   // { flake.nixosConfigurations.foo = ...; }
+#   let
+#     host = config.flake.lib.mkNixosHost { ... };
+#     deploy = config.flake.lib.mkDeploy { system = "x86_64-linux"; nodes = { ... }; };
+#   in {
+#     flake.nixosConfigurations.foo = host;
+#     inherit (deploy) perSystem;
+#     flake.deploy = deploy.flake.deploy;
+#   }
 #
-# This fixes the earlier API where the builder returned a bare merge-set the
-# leaf had to split across `config.flake.deploy` and `perSystem.checks` by
-# hand, and where the checks transposition couldn't be written at all by a
-# plain function.
+# flake-parts merges the `perSystem` function and `flake.deploy` values from
+# all modules, so the spread integrates cleanly.
 { inputs, lib }:
 _: {
   flake.lib.mkDeploy =
@@ -25,11 +28,7 @@ _: {
       nodes ? { },
     }:
     {
-      # deploy-rs `deploy` output: node name → node config (no `nodes` wrapper).
       flake.deploy = nodes;
-      # `deployChecks` takes the deploy config (`.nodes`) and returns the
-      # per-node activation checks; expose them as flake checks on the deploy
-      # system only (no-op on every other declared system).
       perSystem =
         { system', ... }:
         {
