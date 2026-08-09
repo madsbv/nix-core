@@ -139,4 +139,10 @@ in
   };
 
   config.flake.inputs = inputs;
+
+  perSystem =
+    { system, ... }:
+    {
+      apps.agenix-rekey = inputs.agenix-rekey.apps.${system}.agenix-rekey;
+    };
 }
