@@ -1,7 +1,5 @@
 _: {
-  flake.modules.nixos.printing =
-    _:
-    {
-      services.printing.enable = true;
-    };
+  flake.modules.nixos.printing = _: {
+    services.printing.enable = true;
+  };
 }
