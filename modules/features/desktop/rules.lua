@@ -1,0 +1,5 @@
+-- Default awesomewm per-host application rules.
+-- This file is loaded by rc.lua via dofile(). Core ships an empty
+-- default; leaves provide their own rules.lua to add host-specific
+-- application-to-tag mappings (e.g. Steam -> tag 7, Discord -> tag 8).
+-- Use table.insert(awful.rules.rules, { rule = {...}, properties = {...} })

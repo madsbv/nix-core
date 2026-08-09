@@ -6,7 +6,12 @@ _: {
     };
   };
 
-  flake.modules.homeManager.awesomewm = _: {
-    xdg.configFile."awesome/rc.lua".source = ./rc.lua;
-  };
+  flake.modules.homeManager.awesomewm =
+    { lib, ... }:
+    {
+      xdg.configFile = {
+        "awesome/rc.lua".source = ./rc.lua;
+        "awesome/rules.lua".source = lib.mkDefault ./rules.lua;
+      };
+    };
 }

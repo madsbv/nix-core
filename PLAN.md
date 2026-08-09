@@ -316,6 +316,37 @@ Remaining for Milestone 1:
 
 Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wiring deferred to M3/M5.
 
+### M3 review follow-ups (2026-08-09)
+
+Review of the M3 implementation work so far against the plan and the "semantic porting"
+directive from [AGENTS.md](./AGENTS.md). Full review report in the working-copy git log.
+
+#### Findings and resolutions
+
+- **AwesomeWM was in core despite PLAN.md saying personal.** Resolved by splitting the
+  config: the generic `rc.lua` (layouts, keybindings, signals, wibar, default rules) stays in
+  core; application-to-tag rules (Steam→7, Discord→8) are in `personal/features/awesomewm/rules.lua`,
+  loaded by core rc.lua via `dofile()`. Core's default `rules.lua` uses `lib.mkDefault` so the
+  leaf's version wins by priority. This also establishes the pattern for other config files
+  that need per-host customization.
+- **Zathura has no `mine.zathura.enable` option.** This is intentional — it follows the
+  preferred import-gating pattern (import = enable, don't import = disable). Not a bug.
+- **Email age secrets not ported from `presets/secrets/email`.** Intentional — they will be
+  defined when hosts are wired up. Noted in Migration notes.
+- **WiFi/ProtonVPN age secret paths renamed during porting.** Noted in Migration notes;
+  verify old `.age` file paths during host bring-up.
+- **rc.lua was a byte-for-byte copy from the old repo.** The "semantic porting" directive
+  targets nix architecture and wiring, not application config files with single-purpose
+  formats. The rc.lua content itself is fine as-is; the architectural improvement is the
+  dofile-based rules extension point.
+
+#### Added to the plan
+
+- **Import-gating decision** recorded under Decisions recorded, with the grandfathered
+  enable-gated module list.
+- **M3 checklist** updated with granular sub-items for features, secrets, and deploy,
+  marking ported modules and profiles as done.
+
 ---
 
 ## Milestone 2 — Feature set (development tooling)
@@ -349,18 +380,30 @@ Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
 
 - [x] **Fix `mkDeploy`'s leaf API** — resolved in `ae8fad6` via builders-as-flake-parts-modules;
       the scaffold already uses the new pattern (see implementation log).
-- [ ] `personal/features/`: tailscale fleet module (enabled via `mine.network.tailscale.enable`), VPN,
+- [~] `personal/features/`: tailscale fleet module (enabled via `mine.network.tailscale.enable`), VPN,
       hostname/network policy for the personal network, backup/media services as needed.
+  - [x] Personal-bound feature modules ported: librewolf, dropbox, restic, wifi, protonvpn, email,
+        zathura, darwin (dock, autorestic, yabai, skhd, sketchybar, karabiner).
+  - [x] Personal profiles created: `personal-desktop`, `personal-darwin`.
+  - [x] AwesomeWM rules extracted to `personal/features/awesomewm/rules.lua`; core rc.lua loads
+        per-host `rules.lua` via `dofile()`, defaulting to core's empty rules.lua via `lib.mkDefault`.
+  - [ ] tailscale fleet module (hostname/network policy for the personal network).
 - [ ] Personal hosts: `mbv-workstation` (desktop), `mbv-desktop` (media server + CUDA), `mbv-xps13`
       and `hp-90` (headless servers, `server` profile + disko), `mbv-mba` (Mac, `mkDarwinHost`).
-- [ ] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), `identities/`
+- [~] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), `identities/`
       (YubiKey `.pub`), `rekeyed/` (committed), encrypted `.age` files; generators for server secrets
       (WireGuard keys, service passwords, htpasswd).
+  - [x] `secrets.nix` scaffolded with YubiKey identities.
+  - [x] SSH id-key secrets ported for all 5 hosts.
+  - [ ] `rekeyed/` populated; remaining encrypted `.age` files ported from old repo.
+  - [ ] Generators for server secrets.
 - [x] Wire `core.modules/agenix.nix` to read master identities and per-host `hostPubkey` from the leaf,
       and to attach agenix-rekey module to every host. (Already wired — options declared in
       `modules/options.nix`, consumed by `modules/agenix.nix`.)
-- [ ] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for all 5 personal hosts; checks wired
+- [~] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for all 5 personal hosts; checks wired
       into `nix flake check`.
+  - [x] Scaffold `scaffold-test` deploy node wired.
+  - [ ] Real host nodes.
 - [ ] `justfile`: `switch <host>`, `update` (`nix flake update core`), `rekey`, `deploy <node>`,
       `edit-secret <name>`.
 - [ ] Document server bootstrap (nixos-anywhere + disko) in the leaf README.
@@ -519,6 +562,28 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   isolated doom overlays. Full architecture in "Doomemacs — Option 3: store-built DOOMDIR" below. The
   framework stays `git clone doomemacs/core` + `bin/doom install` (module library via the
   `sources/doom+` submodule) so `doom sync` can derive versions.
+- **Import-gating is the desired module pattern, not enable-gating.** Feature modules should take effect
+  the moment they are imported; disabling a feature means not importing its module. This keeps the
+  import/not-import decision at the flake-parts module level (host config / profile) rather than
+  inside the module body, avoiding the double-negative of importing a module and then setting
+  `enable = false`. Exception: system infrastructure options (agenix, persistence, autoUpgrade)
+  where the module provides wiring that multiple hosts share and the leaf toggles behavior — these
+  keep their enable flags. **The following enable-gated modules are grandfathered** and will be
+  converted to import-gating at the operator's discretion:
+
+  **Core**: `tailscale` (`mine.network.tailscale.enable`), `yubikey` (`mine.yubikey.enable`),
+  `rust` (`mine.dev.rust.enable`), `docker` (`mine.dev.docker.enable`),
+  `homebrew` (`mine.darwin.brew.enable`).
+
+  **Personal**: `restic` (`mine.restic.enable`), `wifi` (`mine.wifi.enable`),
+  `protonvpn` (`mine.protonvpn.enable`), `dropbox` (`mine.dropbox.enable`),
+  `email` (`mine.email.enable`), `librewolf` (`mine.librewolf.enable`),
+  `dock` (`mine.darwin.dock.enable`), `autorestic` (`mine.darwin.autorestic.enable`),
+  `skhd` (`mine.darwin.skhd.enable`), `karabiner` (`mine.darwin.karabiner.enable`),
+  `sketchybar` (`mine.darwin.sketchybar.enable`), `yabai` (`mine.darwin.yabai.enable`).
+
+  **Already import-gated** (the correct pattern): pipewire, lightdm, fonts, xdg-desktop,
+  bluetooth-desktop, printing, awesomewm, zathura, and all system base modules.
 
 ## Doomemacs — Option 3: store-built DOOMDIR
 
@@ -795,6 +860,14 @@ before the next item.
   AD-6.
 - **`keys/builder_ed25519`** stays tracked (macOS linux-builder VM key; not security-sensitive).
 - **`ephemeral`** stays out of active config; its installer/ISO role can be rebuilt later on top of core.
+- **WiFi and ProtonVPN age secret paths were renamed during porting.** When hosts are wired up,
+  verify that encrypted `.age` files at these paths exist or rename them accordingly:
+  - WiFi: `spiderlan-nm` → `wifi-spiderlan`, `att-nm` → `wifi-att`, `synapse-nm` → `wifi-synapse`,
+    `vindbjerggaard` → `wifi-vindbjerggaard`.
+  - ProtonVPN: `mbv-desktop-protonvpn` → `protonvpn-wg`.
+- **Email age secrets (`mbsyncrc`, `mu-init-addresses`, `pmbridge-password`) are not defined**
+  in the ported email module. They were previously in `presets/secrets/email/default.nix`. Define
+  them in the host configuration (or a host-level secrets module) when wiring up hosts with email.
 
 ## Notes from the parallel implementation
 

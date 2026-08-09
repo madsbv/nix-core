@@ -522,19 +522,18 @@ awful.rules.rules = {
         properties = { titlebars_enabled = true }
     },
 
-    -- Set Steam to always map on the tag named "7" on screen 1.
-    {
-        rule = { class = "Steam" },
-        properties = { screen = 1, tag = "7" }
-    },
-
-    -- Discord on "8"
-    {
-        rule = { class = "Discord" },
-        properties = { screen = 1, tag = "8" }
-    }
 }
 -- }}}
+
+-- Load per-host application rules from rules.lua.
+-- Core ships a default (empty) file; leaves override it via
+-- mkDefault priority to add host-specific tag mappings.
+local rules_file = awful.util.getdir() .. "/rules.lua"
+local f = io.open(rules_file, "r")
+if f then
+    f:close()
+    dofile(rules_file)
+end
 
 -- {{{ Signals
 -- Signal function to execute when a new client appears.
