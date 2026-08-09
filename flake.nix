@@ -63,5 +63,7 @@
           flake.flakeModules.default = import ./modules/flake-module.nix { inherit inputs; };
         }
       ];
+
+      flake.apps = inputs.agenix-rekey.apps;
     };
 }

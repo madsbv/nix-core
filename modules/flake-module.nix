@@ -28,6 +28,7 @@ in
 {
   imports = [
     inputs.flake-parts.flakeModules.modules
+    inputs.agenix-rekey.flakeModules.default
     inputs.home-manager.flakeModules.default
     inputs.nix-darwin.flakeModules.default
     # `agenix.nix`/`base.nix`/`color-scheme.nix` are applied with core's inputs
@@ -139,10 +140,4 @@ in
   };
 
   config.flake.inputs = inputs;
-
-  perSystem =
-    { system, ... }:
-    {
-      apps.agenix-rekey = inputs.agenix-rekey.apps.${system}.agenix-rekey;
-    };
 }
