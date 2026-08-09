@@ -56,8 +56,6 @@
 
       imports = [
         (import ./modules/flake-module.nix { inherit inputs; })
-        inputs.treefmt-nix.flakeModule
-        ./modules/treefmt.nix
         {
           flake.flakeModules.default = import ./modules/flake-module.nix { inherit inputs; };
         }
