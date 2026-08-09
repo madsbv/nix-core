@@ -23,17 +23,17 @@ let
       # so always provide it (the leaf overrides it when enabling).
       config.age = lib.mkMerge [
         {
-          rekey.masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
+          rekey = {
+            masterIdentities = lib.mkDefault config.mine.agenix.masterIdentities;
+            storageMode = "local";
+          };
         }
-        (lib.mkIf config.mine.agenix.enable (
-          {
-            rekey = {
-              hostPubkey = config.mine.agenix.hostPubkey;
-              storageMode = "local";
-              localStorageDir = config.mine.agenix.localStorageDir;
-              generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
-              agePlugins = [ pkgs.age-plugin-yubikey ];
-            };
+        (lib.mkIf config.mine.agenix.enable {
+          rekey = {
+            hostPubkey = config.mine.agenix.hostPubkey;
+            localStorageDir = config.mine.agenix.localStorageDir;
+            generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
+            agePlugins = [ pkgs.age-plugin-yubikey ];
           }
           // lib.optionalAttrs hostKeyIdentityPaths {
             identityPaths = lib.mkDefault (
@@ -44,8 +44,8 @@ let
               else
                 [ ]
             );
-          }
-        ))
+          };
+        })
       ];
     };
 in
