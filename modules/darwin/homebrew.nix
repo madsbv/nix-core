@@ -29,14 +29,22 @@ _: {
           default = [ ];
           description = "Homebrew casks to install.";
         };
+        enableRosetta = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Enable Rosetta 2 for x86_64 homebrew on Apple Silicon.";
+        };
       };
       config = lib.mkIf config.mine.darwin.brew.enable {
         nix-homebrew = {
           enable = true;
-          user = config.mine.darwin.brew.user;
-          taps = config.mine.darwin.brew.taps;
-          brews = config.mine.darwin.brew.brews;
-          casks = config.mine.darwin.brew.casks;
+          inherit (config.mine.darwin.brew)
+            user
+            enableRosetta
+            taps
+            brews
+            casks
+            ;
         };
       };
     };
