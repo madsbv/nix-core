@@ -75,6 +75,16 @@ in
       description = "The machine's hostname.";
     };
 
+    flakeRoot = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Absolute filesystem path to the leaf flake root for this host.
+        Used to derive convention-based paths for agenix secret directories.
+        Set per-host because different machines may clone the flake to different
+        locations (/etc/nixos/nix, ~/.config/nix/, etc.). Null means the
+        convention-based paths are not available.";
+    };
+
     primaryUser = lib.mkOption {
       type = lib.types.str;
       description = "Username of the primary user; must be a key of `mine.users`.";
