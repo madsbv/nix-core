@@ -12,8 +12,6 @@ _: {
     }:
     {
       config = {
-        nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
-
         programs.bacon = {
           enable = true;
           settings = {
