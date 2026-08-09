@@ -1,14 +1,9 @@
 { inputs }:
 let
-  # Shared agenix(-rekey) wiring, reused by every module class. The classes
-  # only differ in which agenix/agenix-rekey modules they import, so the rekey
-  # config is defined once here. `hostKeyIdentityPaths` additionally derives
-  # agenix `identityPaths` from the NixOS openssh host keys; homeManager/darwin
-  # don't expose a host-key store, so they leave it unset.
+  # Shared agenix-rekey wiring, reused by every module class.
   mkAgenixModule =
     {
       imports,
-      hostKeyIdentityPaths ? false,
     }:
     {
       config,
@@ -34,16 +29,6 @@ let
             localStorageDir = config.mine.agenix.localStorageDir;
             generatedSecretsDir = config.mine.agenix.generatedSecretsDir;
             agePlugins = [ pkgs.age-plugin-yubikey ];
-          }
-          // lib.optionalAttrs hostKeyIdentityPaths {
-            identityPaths = lib.mkDefault (
-              if config.services.openssh.enable or false then
-                map (e: e.path) (
-                  lib.filter (e: e.type == "ed25519" || e.type == "rsa") config.services.openssh.hostKeys
-                )
-              else
-                [ ]
-            );
           };
         })
       ];
@@ -56,7 +41,6 @@ _: {
         inputs.agenix.nixosModules.age
         inputs.agenix-rekey.nixosModules.default
       ];
-      hostKeyIdentityPaths = true;
     };
 
     homeManager.agenix = mkAgenixModule {
