@@ -57,6 +57,14 @@
         ./system/builder-darwin.nix
         ./system/update-diff.nix
         ./system/register-flake.nix
+        (
+          { config, lib, ... }:
+          {
+            config = lib.mkIf (config.mine.network.dns.servers != [ ]) {
+              networking.dns = config.mine.network.dns.servers;
+            };
+          }
+        )
       ];
     };
   };

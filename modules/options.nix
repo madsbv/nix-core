@@ -113,6 +113,15 @@ in
 
     network.tailscale.enable = lib.mkEnableOption "Tailscale";
 
+    network.dns = {
+      servers = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "DNS servers to prepend to the system resolver.";
+      };
+      quad9MalwareBlocking = lib.mkEnableOption "Quad9 + Cloudflare malware-blocking DNS servers";
+    };
+
     # SSH known_hosts for forge services + fleet nodes (wired by
     # `modules/system/keys.nix`). Declared here so the generic `mine` mirror
     # into Home Manager evaluations stays consistent.
@@ -150,6 +159,30 @@ in
         type = lib.types.listOf lib.types.raw;
         default = [ ];
         description = "nix.buildMachines entries for remote builder nodes.";
+      };
+    };
+
+    prefetch = {
+      enable = lib.mkEnableOption "pre-build flake updates on a timer without switching";
+      flake = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Path to the leaf flake to prefetch from.";
+      };
+      target = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Flake output attribute to build, e.g. nixosConfigurations.myhost.config.system.build.toplevel.";
+      };
+      inputs = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Flake inputs to update before building (e.g. [\"core\" \"nixpkgs\"]); empty = update all.";
+      };
+      schedule = lib.mkOption {
+        type = lib.types.str;
+        default = "daily";
+        description = "systemd OnCalendar / launchd StartCalendarInterval schedule.";
       };
     };
 
@@ -278,6 +311,20 @@ in
     (lib.mkIf (config ? home && config.mine.users ? ${config.home.username}) {
       mine.user = lib.mkForce config.mine.users.${config.home.username};
     })
+    # Quad9 + Cloudflare malware-blocking DNS preset.
+    (lib.mkIf config.mine.network.dns.quad9MalwareBlocking {
+      mine.network.dns.servers = [
+        "9.9.9.9"
+        "149.112.112.112"
+        "2620:fe::fe"
+        "2620:fe::9"
+        "1.1.1.2"
+        "1.0.0.2"
+        "2606:4700:4700::1112"
+        "2606:4700:4700::1002"
+      ];
+    })
+
     # Resolve the per-host stateVersion: `mine.system.stateVersion` is null when
     # a leaf hasn't set it, so fall back to core's default and warn. The
     # `config ? warnings` guard keeps this safe on module systems without a

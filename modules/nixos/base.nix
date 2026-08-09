@@ -19,5 +19,9 @@ _:
       allowReboot = true;
       randomizedDelaySec = "45min";
     };
+
+    networking.nameservers = lib.mkIf (config.mine.network.dns.servers != [ ]) (
+      lib.mkBefore config.mine.network.dns.servers
+    );
   };
 }
