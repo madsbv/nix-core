@@ -3,6 +3,7 @@
   flake.profiles.dev = {
     nixos = [
       config.flake.modules.nixos.docker
+      config.flake.modules.nixos.rust
     ];
     homeManager = config.flake.profiles.dev-base.homeManager ++ [
       config.flake.modules.homeManager.python
