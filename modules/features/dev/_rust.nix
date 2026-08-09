@@ -3,17 +3,11 @@ _: {
   flake.modules.homeManager.rust =
     {
       config,
-      lib,
       pkgs,
       ...
     }:
-    let
-      cfg = config.mine.dev.rust;
-    in
     {
-      options.mine.dev.rust.enable = lib.mkEnableOption "Rust toolchain";
-
-      config = lib.mkIf cfg.enable {
+      config = {
         nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
 
         programs.bacon = {

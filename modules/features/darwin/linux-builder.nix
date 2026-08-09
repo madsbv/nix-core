@@ -8,7 +8,6 @@ _: {
     }:
     {
       options.mine.darwin.linuxBuilder = {
-        enable = lib.mkEnableOption "linux-builder VM for cross-compilation";
         package = lib.mkOption {
           type = lib.types.package;
           default = pkgs.darwin.linux-builder-x86_64;
@@ -20,7 +19,7 @@ _: {
           description = "Build priority multiplier for the local linux-builder VM.";
         };
       };
-      config = lib.mkIf config.mine.darwin.linuxBuilder.enable {
+      config = {
         nix.linux-builder = {
           enable = true;
           package = config.mine.darwin.linuxBuilder.package;

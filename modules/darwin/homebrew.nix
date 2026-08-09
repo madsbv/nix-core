@@ -9,7 +9,6 @@ _: {
     {
       imports = [ inputs.nix-homebrew.darwinModules.nix-homebrew ];
       options.mine.darwin.brew = {
-        enable = lib.mkEnableOption "nix-homebrew";
         user = lib.mkOption {
           type = lib.types.str;
           description = "Primary user for homebrew operations.";
@@ -35,7 +34,7 @@ _: {
           description = "Enable Rosetta 2 for x86_64 homebrew on Apple Silicon.";
         };
       };
-      config = lib.mkIf config.mine.darwin.brew.enable {
+      config = {
         nix-homebrew = {
           enable = true;
           inherit (config.mine.darwin.brew)

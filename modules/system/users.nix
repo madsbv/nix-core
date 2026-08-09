@@ -56,9 +56,8 @@ in
 
   # Per-user SSH identity secrets (agenix-rekey), same layout as the old repo:
   #   secrets/ssh/id_ed25519.<hostname>.<username>.age
-  # Mechanism only — gated on `mine.agenix.enable`, path derived from the
-  # leaf's `mine.agenix.secretsDir`.
-  age.secrets = lib.mkIf (cfg.agenix.enable && ageSecretsDir != null) (
+  # Path derived from the leaf's `mine.agenix.secretsDir`.
+  age.secrets = lib.mkIf (ageSecretsDir != null) (
     lib.mapAttrs' (
       _: u:
       lib.nameValuePair "id.${hostKeyName}.${u.username}" {

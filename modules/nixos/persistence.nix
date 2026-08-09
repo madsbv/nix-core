@@ -10,7 +10,7 @@
   config = {
     environment = {
       sessionVariables.NIX_INDEX_DATABASE = "/var/cache/nix-index/";
-      persistence."/nix/persist" = lib.mkIf config.mine.system.persistence.enable {
+      persistence."/nix/persist" = {
         hideMounts = true;
         directories = [
           "/etc/ssh"

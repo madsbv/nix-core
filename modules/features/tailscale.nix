@@ -11,7 +11,7 @@ _: {
         default = null;
         description = "Path to an agenix-decrypted tailscale auth key. When null, interactive login is used.";
       };
-      config = lib.mkIf config.mine.network.tailscale.enable {
+      config = {
         services.tailscale = {
           enable = true;
           extraUpFlags = [ "--ssh" ];
@@ -34,7 +34,7 @@ _: {
         default = null;
         description = "Path to an agenix-decrypted tailscale auth key. When null, interactive login is used.";
       };
-      config = lib.mkIf config.mine.network.tailscale.enable {
+      config = {
         services.tailscale = {
           enable = true;
           extraUpFlags = [ "--ssh" ];
@@ -47,13 +47,11 @@ _: {
 
   flake.modules.homeManager.tailscale =
     {
-      config,
-      lib,
       pkgs,
       ...
     }:
     {
-      config = lib.mkIf config.mine.network.tailscale.enable {
+      config = {
         home.packages = [ pkgs.tailscale ];
       };
     };

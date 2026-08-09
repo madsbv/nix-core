@@ -24,7 +24,7 @@ let
             storageMode = "local";
           };
         }
-        (lib.mkIf config.mine.agenix.enable {
+        {
           rekey = {
             hostPubkey = config.mine.agenix.hostPubkey;
             localStorageDir =
@@ -41,7 +41,7 @@ let
                 self + "/secrets/generated";
             agePlugins = [ pkgs.age-plugin-yubikey ];
           };
-        })
+        }
       ];
     };
 in

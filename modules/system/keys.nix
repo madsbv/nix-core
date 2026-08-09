@@ -8,24 +8,22 @@ let
   cfg = config.mine.ssh.knownHosts;
 in
 {
-  config.programs.ssh.knownHosts = lib.mkIf cfg.enable (
-    {
-      "github.com".publicKey =
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
-      "gitlab.com".publicKey =
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
-      "git.sr.ht".publicKey =
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMZvRd4EtM7R+IHVMWmDkVU3VLQTSwQDSAvW0t2Tkj60";
-    }
-    // lib.optionalAttrs (cfg.hostKeyDir != null) (
-      builtins.listToAttrs (
-        map (host: {
-          name = host;
-          value = {
-            publicKeyFile = "${cfg.hostKeyDir}/ssh_host_ed25519_key.pub.${host}";
-          };
-        }) cfg.nodes
-      )
+  config.programs.ssh.knownHosts = {
+    "github.com".publicKey =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
+    "gitlab.com".publicKey =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
+    "git.sr.ht".publicKey =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMZvRd4EtM7R+IHVMWmDkVU3VLQTSwQDSAvW0t2Tkj60";
+  }
+  // lib.optionalAttrs (cfg.hostKeyDir != null) (
+    builtins.listToAttrs (
+      map (host: {
+        name = host;
+        value = {
+          publicKeyFile = "${cfg.hostKeyDir}/ssh_host_ed25519_key.pub.${host}";
+        };
+      }) cfg.nodes
     )
   );
 }

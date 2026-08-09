@@ -13,7 +13,7 @@ _:
 
     system.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
 
-    system.autoUpgrade = lib.mkIf config.mine.system.autoUpgrade.enable {
+    system.autoUpgrade = {
       flake = config.mine.system.autoUpgrade.flake;
       persistent = true;
       allowReboot = true;

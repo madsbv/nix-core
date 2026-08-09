@@ -1,14 +1,11 @@
 _: {
   flake.modules.nixos.yubikey =
     {
-      config,
-      lib,
       pkgs,
       ...
     }:
     {
-      options.mine.yubikey.enable = lib.mkEnableOption "Yubikey hardware support (yubikey-agent + CLI tools)";
-      config = lib.mkIf config.mine.yubikey.enable {
+      config = {
         services.yubikey-agent.enable = true;
         environment.systemPackages = with pkgs; [
           yubikey-manager
@@ -19,14 +16,11 @@ _: {
 
   flake.modules.darwin.yubikey =
     {
-      config,
-      lib,
       pkgs,
       ...
     }:
     {
-      options.mine.yubikey.enable = lib.mkEnableOption "Yubikey hardware support (yubikey-agent + CLI tools)";
-      config = lib.mkIf config.mine.yubikey.enable {
+      config = {
         services.yubikey-agent.enable = true;
         environment.systemPackages = with pkgs; [
           yubikey-manager
@@ -37,14 +31,11 @@ _: {
 
   flake.modules.homeManager.yubikey =
     {
-      config,
-      lib,
       pkgs,
       ...
     }:
     {
-      options.mine.yubikey.enable = lib.mkEnableOption "Yubikey CLI tools";
-      config = lib.mkIf config.mine.yubikey.enable {
+      config = {
         home.packages = [ pkgs.yubikey-manager ];
       };
     };

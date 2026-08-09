@@ -28,14 +28,9 @@
         (import ./nixos/base.nix { inherit inputs; })
         # NixOS needs a dedicated `builders` group for the remote-builder user;
         # darwin manages the linux-builder VM user differently (builder-darwin.nix).
-        (
-          { config, lib, ... }:
-          {
-            config = lib.mkIf config.mine.remoteBuilder.enableLocalBuilder {
-              users.groups.builders = { };
-            };
-          }
-        )
+        (_: {
+          users.groups.builders = { };
+        })
       ];
     };
 

@@ -10,28 +10,23 @@
 # checks — routes behavior to the right platform.
 {
   config,
-  lib,
   ...
 }:
 let
   cfg = config.mine.remoteBuilder;
 in
 {
-  config = lib.mkMerge [
-    (lib.mkIf cfg.enableLocalBuilder {
-      users.users.builder = {
-        isSystemUser = true;
-        group = "builders";
-        openssh.authorizedKeys.keys = cfg.authorizedKeys;
-      };
-    })
-    (lib.mkIf cfg.enableRemoteBuilders {
-      nix.buildMachines = cfg.buildMachines;
-      programs.ssh.extraConfig = ''
-        ConnectTimeout = 10
-        ServerAliveInterval = 5
-        ServerAliveCountMax = 2
-      '';
-    })
-  ];
+  config = {
+    users.users.builder = {
+      isSystemUser = true;
+      group = "builders";
+      openssh.authorizedKeys.keys = cfg.authorizedKeys;
+    };
+    nix.buildMachines = cfg.buildMachines;
+    programs.ssh.extraConfig = ''
+      ConnectTimeout = 10
+      ServerAliveInterval = 5
+      ServerAliveCountMax = 2
+    '';
+  };
 }

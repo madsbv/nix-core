@@ -121,8 +121,6 @@ in
       };
     };
 
-    network.tailscale.enable = lib.mkEnableOption "Tailscale";
-
     network.dns = {
       servers = lib.mkOption {
         type = lib.types.listOf lib.types.str;
@@ -136,7 +134,6 @@ in
     # `modules/system/keys.nix`). Declared here so the generic `mine` mirror
     # into Home Manager evaluations stays consistent.
     ssh.knownHosts = {
-      enable = lib.mkEnableOption "SSH known_hosts for known services and fleet nodes";
       hostKeyDir = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
@@ -158,8 +155,6 @@ in
 
     # Remote building (wired by `modules/system/builder.nix`).
     remoteBuilder = {
-      enableLocalBuilder = lib.mkEnableOption "local `builder` user for remote builds";
-      enableRemoteBuilders = lib.mkEnableOption "use of other nodes as remote builders";
       authorizedKeys = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ ];
@@ -173,7 +168,6 @@ in
     };
 
     prefetch = {
-      enable = lib.mkEnableOption "pre-build flake updates on a timer without switching";
       flake = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
@@ -197,11 +191,7 @@ in
     };
 
     system = {
-      persistence.enable = lib.mkEnableOption "impermanence-based `/nix/persist` persistence" // {
-        default = true;
-      };
       autoUpgrade = {
-        enable = lib.mkEnableOption "system.autoUpgrade";
         flake = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
@@ -211,9 +201,6 @@ in
 
       # Package diff on activation (wired by `modules/system/update-diff.nix`).
       updateDiff = {
-        enable = lib.mkEnableOption "show a package diff between the current and incoming system" // {
-          default = true;
-        };
         command = lib.mkOption {
           type = lib.types.nullOr lib.types.singleLineStr;
           default = null;
@@ -242,9 +229,6 @@ in
       };
 
       # Wrong-host protection (wired by `modules/system/detect-hostname-change.nix`).
-      detectHostnameChange.enable = lib.mkEnableOption "warn if the hostname changes between deploys" // {
-        default = true;
-      };
 
       # stateVersion, overridable per host. Core warns and falls back to its
       # default when a host leaves it unset; `stateVersionFinal` is the derived
@@ -260,10 +244,7 @@ in
       };
     };
 
-    # Secret store wiring. Supplied by the leaf per host; only consumed when
-    # `enable` is true (personal/work bring-up, milestone 3+).
     agenix = {
-      enable = lib.mkEnableOption "agenix-rekey secret provisioning";
       masterIdentities = lib.mkOption {
         type = lib.types.listOf (
           lib.types.submodule {
