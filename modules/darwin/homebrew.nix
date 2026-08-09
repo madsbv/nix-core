@@ -42,6 +42,10 @@ _: {
             user
             enableRosetta
             taps
+            ;
+        };
+        homebrew = {
+          inherit (config.mine.darwin.brew)
             brews
             casks
             ;
