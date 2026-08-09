@@ -30,6 +30,9 @@
     impermanence.url = "github:nix-community/impermanence";
     impermanence.inputs.nixpkgs.follows = "nixpkgs";
 
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
+
     base16.url = "github:SenchoPens/base16.nix";
 
     nixvim.url = "github:nix-community/nixvim";
