@@ -316,6 +316,39 @@ Remaining for Milestone 1:
 
 Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wiring deferred to M3/M5.
 
+### M3 import-gating conversion (2026-08-09)
+
+Removed every `mine.<feature>.enable` option and `lib.mkIf` wrapper across all core and personal
+modules, converting to pure import-gating. Modules now activate unconditionally when imported;
+disabling means not importing.
+
+**Core** (`0b7d525`, `dae4246`, `ee9e4c6`):
+- Removed 10 enable option declarations from `options.nix`: `tailscale`, `ssh.knownHosts`,
+  `remoteBuilder.{enableLocalBuilder,enableRemoteBuilders}`, `prefetch`, `system.persistence`,
+  `system.autoUpgrade`, `system.updateDiff`, `system.detectHostnameChange`, `agenix`
+- Removed `mkIf` wrappers from all system modules (`keys`, `builder`, `builder-darwin`, `agenix`,
+  `users`, `nixos/base` autoUpgrade, `nixos/persistence`, `detect-hostname-change`, `base` nixos)
+- Removed enable options and `mkIf`s from feature modules: `tailscale`, `yubikey`, `rust`,
+  `docker`, `homebrew`, `linux-builder`
+- Rust now uses a NixOS-level overlay (via new `nixos.rust` module in dev profile) for
+  `useGlobalPkgs` compatibility
+
+**Personal** (`e45ae93`):
+- Removed enable options and `mkIf`s from all 14 personal feature modules
+- Added NixOS-level option stubs for `librewolf` (deviceName) and `email` (muAddressArgs,
+  pmbridgePasswordFile) so host identities can set these in the system eval for HM mirroring
+- Created `features/email/secrets.nix` wiring age.secrets for mbsyncrc, mu-init-addresses,
+  pmbridge-password
+- Wired email into `personal-desktop` (NixOS + HM) and `personal-darwin` (HM only) profiles
+- Fixed pre-existing `restic.nix` operator precedence bug (`args.grace or daysToSecs 10` →
+  `args.grace or (daysToSecs 10)`) — previously hidden behind the enable gate
+- Fixed pre-existing `home-assistant` appdaemon path (`./appdaemon/apps` → `./appdaemon`)
+- Fixed pre-existing `dropbox` path (`~/Dropbox` → `${config.home.homeDirectory}/Dropbox`)
+- Added `nixpkgs.config.allowUnfree` for mbv-workstation (needed by dropbox/steam)
+- Added `mine.librewolf.deviceName` to mbv-workstation identity
+- Added agenix `hostPubkey` to scaffold-test (no longer optional)
+- Removed stale `enable = true/false` lines from all 5 host identity files
+
 ### M3 review follow-ups (2026-08-09)
 
 Review of the M3 implementation work so far against the plan and the "semantic porting"
@@ -380,31 +413,34 @@ Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
 
 - [x] **Fix `mkDeploy`'s leaf API** — resolved in `ae8fad6` via builders-as-flake-parts-modules;
       the scaffold already uses the new pattern (see implementation log).
-- [~] `personal/features/`: tailscale fleet module (enabled via `mine.network.tailscale.enable`), VPN,
-      hostname/network policy for the personal network, backup/media services as needed.
+- [x] `personal/features/`: all personal-bound feature modules ported and converted to
+      import-gating (see implementation log "M3 import-gating conversion").
   - [x] Personal-bound feature modules ported: librewolf, dropbox, restic, wifi, protonvpn, email,
         zathura, darwin (dock, autorestic, yabai, skhd, sketchybar, karabiner).
   - [x] Personal profiles created: `personal-desktop`, `personal-darwin`.
   - [x] AwesomeWM rules extracted to `personal/features/awesomewm/rules.lua`; core rc.lua loads
         per-host `rules.lua` via `dofile()`, defaulting to core's empty rules.lua via `lib.mkDefault`.
+  - [x] All enable-gated modules converted to import-gating.
   - [ ] tailscale fleet module (hostname/network policy for the personal network).
-- [ ] Personal hosts: `mbv-workstation` (desktop), `mbv-desktop` (media server + CUDA), `mbv-xps13`
-      and `hp-90` (headless servers, `server` profile + disko), `mbv-mba` (Mac, `mkDarwinHost`).
-- [~] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), `identities/`
-      (YubiKey `.pub`), `rekeyed/` (committed), encrypted `.age` files; generators for server secrets
+- [x] Personal hosts: `mbv-workstation`, `mbv-desktop`, `mbv-xps13`, `hp-90` all build and pass
+      `nix flake check` (x86_64-linux). `mbv-mba` (Mac, `mkDarwinHost`) is wired but untested
+      on aarch64-darwin.
+- [~] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), YubiKey `.pub`
+      files, `rekeyed/` (committed), encrypted `.age` files; generators for server secrets
       (WireGuard keys, service passwords, htpasswd).
   - [x] `secrets.nix` scaffolded with YubiKey identities.
   - [x] SSH id-key secrets ported for all 5 hosts.
+  - [x] Email age secrets wired via `features/email/secrets.nix`.
   - [ ] `rekeyed/` populated; remaining encrypted `.age` files ported from old repo.
   - [ ] Generators for server secrets.
 - [x] Wire `core.modules/agenix.nix` to read master identities and per-host `hostPubkey` from the leaf,
-      and to attach agenix-rekey module to every host. (Already wired — options declared in
-      `modules/options.nix`, consumed by `modules/agenix.nix`.)
-- [~] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for all 5 personal hosts; checks wired
+      and to attach agenix-rekey module to every host. (Already wired — agenix now always active;
+      hostPubkey required on all hosts.)
+- [x] `personal/deploy.nix` via `core.lib.mkDeploy`: nodes for all 5 personal hosts; checks wired
       into `nix flake check`.
   - [x] Scaffold `scaffold-test` deploy node wired.
-  - [ ] Real host nodes.
-- [ ] `justfile`: `switch <host>`, `update` (`nix flake update core`), `rekey`, `deploy <node>`,
+  - [x] Real host nodes for all 5 hosts wired.
+- [x] `justfile`: `switch <host>`, `update` (`nix flake update core`), `rekey`, `deploy <node>`,
       `edit-secret <name>`.
 - [ ] Document server bootstrap (nixos-anywhere + disko) in the leaf README.
 
@@ -562,28 +598,11 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   isolated doom overlays. Full architecture in "Doomemacs — Option 3: store-built DOOMDIR" below. The
   framework stays `git clone doomemacs/core` + `bin/doom install` (module library via the
   `sources/doom+` submodule) so `doom sync` can derive versions.
-- **Import-gating is the desired module pattern, not enable-gating.** Feature modules should take effect
-  the moment they are imported; disabling a feature means not importing its module. This keeps the
-  import/not-import decision at the flake-parts module level (host config / profile) rather than
-  inside the module body, avoiding the double-negative of importing a module and then setting
-  `enable = false`. Exception: system infrastructure options (agenix, persistence, autoUpgrade)
-  where the module provides wiring that multiple hosts share and the leaf toggles behavior — these
-  keep their enable flags. **The following enable-gated modules are grandfathered** and will be
-  converted to import-gating at the operator's discretion:
-
-  **Core**: `tailscale` (`mine.network.tailscale.enable`), `yubikey` (`mine.yubikey.enable`),
-  `rust` (`mine.dev.rust.enable`), `docker` (`mine.dev.docker.enable`),
-  `homebrew` (`mine.darwin.brew.enable`).
-
-  **Personal**: `restic` (`mine.restic.enable`), `wifi` (`mine.wifi.enable`),
-  `protonvpn` (`mine.protonvpn.enable`), `dropbox` (`mine.dropbox.enable`),
-  `email` (`mine.email.enable`), `librewolf` (`mine.librewolf.enable`),
-  `dock` (`mine.darwin.dock.enable`), `autorestic` (`mine.darwin.autorestic.enable`),
-  `skhd` (`mine.darwin.skhd.enable`), `karabiner` (`mine.darwin.karabiner.enable`),
-  `sketchybar` (`mine.darwin.sketchybar.enable`), `yabai` (`mine.darwin.yabai.enable`).
-
-  **Already import-gated** (the correct pattern): pipewire, lightdm, fonts, xdg-desktop,
-  bluetooth-desktop, printing, awesomewm, zathura, and all system base modules.
+- **Import-gating is the module pattern.** All modules use pure import-gating: importing a
+  module activates it unconditionally; disabling a feature means not importing the module. This
+  keeps the import/not-import decision at the flake-parts module level (host config / profile)
+  rather than inside the module body. All modules were converted to import-gating in the M3
+  refactor (see implementation log).
 
 ## Doomemacs — Option 3: store-built DOOMDIR
 
