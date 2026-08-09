@@ -4,6 +4,7 @@ let
   mkAgenixModule =
     {
       imports,
+      self,
     }:
     {
       config,
@@ -23,41 +24,39 @@ let
             storageMode = "local";
           };
         }
-        (lib.mkIf config.mine.agenix.enable (
-          let
-            deriveDir =
-              opt: subPath:
-              if opt != null then
-                opt
-              else if config.mine.flakeRoot != null then
-                config.mine.flakeRoot + subPath
+        (lib.mkIf config.mine.agenix.enable {
+          rekey = {
+            hostPubkey = config.mine.agenix.hostPubkey;
+            localStorageDir =
+              if config.mine.agenix.localStorageDir != null then
+                config.mine.agenix.localStorageDir
               else
-                builtins.throw ''
-                  mine.flakeRoot must be set when agenix is enabled and the directory is
-                  not explicitly overridden. Set mine.flakeRoot to the absolute path of
-                  the leaf flake root (/etc/nixos/nix, ~/.config/nix/, etc.).
-                '';
-          in
-          {
-            rekey = {
-              hostPubkey = config.mine.agenix.hostPubkey;
-              localStorageDir = deriveDir config.mine.agenix.localStorageDir "/secrets/rekeyed/${config.mine.hostName}";
-              secretsDir = deriveDir config.mine.agenix.secretsDir "/secrets";
-              generatedSecretsDir = deriveDir config.mine.agenix.generatedSecretsDir "/secrets/generated";
-              agePlugins = [ pkgs.age-plugin-yubikey ];
-            };
-          }
-        ))
+                self + "/secrets/rekeyed/${config.mine.hostName}";
+            secretsDir =
+              if config.mine.agenix.secretsDir != null then config.mine.agenix.secretsDir else self + "/secrets";
+            generatedSecretsDir =
+              if config.mine.agenix.generatedSecretsDir != null then
+                config.mine.agenix.generatedSecretsDir
+              else
+                self + "/secrets/generated";
+            agePlugins = [ pkgs.age-plugin-yubikey ];
+          };
+        })
       ];
     };
 in
-_: {
+{
+  self,
+  ...
+}:
+{
   flake.modules = {
     nixos.agenix = mkAgenixModule {
       imports = [
         inputs.agenix.nixosModules.age
         inputs.agenix-rekey.nixosModules.default
       ];
+      inherit self;
     };
 
     homeManager.agenix = mkAgenixModule {
@@ -65,6 +64,7 @@ _: {
         inputs.agenix.homeManagerModules.age
         inputs.agenix-rekey.homeManagerModules.default
       ];
+      inherit self;
     };
 
     darwin.agenix = mkAgenixModule {
@@ -72,6 +72,7 @@ _: {
         inputs.agenix.darwinModules.age
         inputs.agenix-rekey.darwinModules.default
       ];
+      inherit self;
     };
   };
 }
