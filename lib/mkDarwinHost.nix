@@ -49,6 +49,7 @@ in
           user = config.mine.user.username;
         in
         {
+          system.primaryUser = user;
           home-manager = {
             users.${user}.imports = [
               # Mirror the system evaluation's `mine.*` values into the nested
@@ -70,18 +71,6 @@ in
         {
           networking.hostName = lib.mkDefault hostname;
         }
-        (
-          {
-            config,
-            lib,
-            ...
-          }:
-          {
-            # Resolved from `mine.system.stateVersion`; leaves may override
-            # `system.stateVersion` directly.
-            system.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
-          }
-        )
         homeManagerDarwinModule
         userWiring
       ]

@@ -46,9 +46,7 @@
         ./options.nix
         config.flake.modules.darwin.agenix
         config.flake.modules.darwin.homebrew
-        ./system/users.nix
-        ./system/keys.nix
-        ./system/builder.nix
+        ./system/users-darwin.nix
         ./system/builder-darwin.nix
         ./system/update-diff.nix
         ./system/register-flake.nix

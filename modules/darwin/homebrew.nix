@@ -28,6 +28,11 @@ _: {
           default = [ ];
           description = "Homebrew casks to install.";
         };
+        masApps = lib.mkOption {
+          type = lib.types.attrsOf lib.types.int;
+          default = { };
+          description = "Mac App Store apps to install (name → app ID).";
+        };
         enableRosetta = lib.mkOption {
           type = lib.types.bool;
           default = true;
@@ -37,17 +42,29 @@ _: {
       config = {
         nix-homebrew = {
           enable = true;
-          inherit (config.mine.darwin.brew)
-            user
-            enableRosetta
-            taps
-            ;
+          mutableTaps = false;
+          user = config.mine.darwin.brew.user;
+          enableRosetta = config.mine.darwin.brew.enableRosetta;
+          taps = {
+            "homebrew/homebrew-core" = inputs.homebrew-core;
+            "homebrew/homebrew-cask" = inputs.homebrew-cask;
+            "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+            "homebrew/homebrew-services" = inputs.homebrew-services;
+          }
+          // config.mine.darwin.brew.taps;
         };
         homebrew = {
           inherit (config.mine.darwin.brew)
             brews
             casks
+            masApps
             ;
+          caskArgs.no_quarantine = true;
+          onActivation = {
+            cleanup = "uninstall";
+            upgrade = true;
+          };
+          enableZshIntegration = true;
         };
       };
     };

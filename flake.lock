@@ -418,6 +418,70 @@
         "type": "github"
       }
     },
+    "homebrew-bundle": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1745335228,
+        "narHash": "sha256-TIKR2UgtyUmHLNZp255/vLs+1I10hXe+sciMEbAGFwE=",
+        "owner": "Homebrew",
+        "repo": "homebrew-bundle",
+        "rev": "a3265c84b232e13048ecbf6fc18a2eedfadbeb08",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Homebrew",
+        "repo": "homebrew-bundle",
+        "type": "github"
+      }
+    },
+    "homebrew-cask": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786315000,
+        "narHash": "sha256-YRIhKhAQjKN9l3/vN703YfNmBxYCcXTpGGO0iYnh4Kw=",
+        "owner": "Homebrew",
+        "repo": "homebrew-cask",
+        "rev": "5d68928b3f3be82e14d29d5e8e43f3d27ad8261b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Homebrew",
+        "repo": "homebrew-cask",
+        "type": "github"
+      }
+    },
+    "homebrew-core": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786314749,
+        "narHash": "sha256-8nojcjLaW866oW/j2Bny7yCyJaC2YG3NeSIbbMK+s8I=",
+        "owner": "Homebrew",
+        "repo": "homebrew-core",
+        "rev": "64c92293366223cbcb85781e7f21898179691954",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Homebrew",
+        "repo": "homebrew-core",
+        "type": "github"
+      }
+    },
+    "homebrew-services": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1742475690,
+        "narHash": "sha256-qg3/+iHtnFe6VxGapisTatGnoH0XG4BnWWqwwzWYzk0=",
+        "owner": "Homebrew",
+        "repo": "homebrew-services",
+        "rev": "2c294ab9515576d961cea28c93148c6452db2def",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Homebrew",
+        "repo": "homebrew-services",
+        "type": "github"
+      }
+    },
     "impermanence": {
       "inputs": {
         "home-manager": "home-manager_3",
@@ -584,6 +648,10 @@
         "disko": "disko",
         "flake-parts": "flake-parts_3",
         "home-manager": "home-manager_2",
+        "homebrew-bundle": "homebrew-bundle",
+        "homebrew-cask": "homebrew-cask",
+        "homebrew-core": "homebrew-core",
+        "homebrew-services": "homebrew-services",
         "impermanence": "impermanence",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",

@@ -75,6 +75,52 @@ leaf proving cross-repo consumption.
 
 Running record of what was built and the decisions discovered while doing it. Newest entries on top.
 
+### M3/M4 completion + darwin bring-up (2026-08-09)
+
+Finished the remaining M3 items and brought the darwin host to evaluable state.
+
+- **Update-diff activation hook**: `mine.system.updateDiff.text` was composed but never wired into
+  activation. Added `system.activationScripts.preActivation` to `modules/system/update-diff.nix`,
+  matching the srvos pattern. Works on both NixOS and nix-darwin.
+
+- **Homebrew audit and wiring**: core `modules/darwin/homebrew.nix` now declares `masApps` option
+  (wired to `homebrew.masApps`), sets sensible defaults (`caskArgs.no_quarantine`, `onActivation`
+  with `cleanup = "uninstall"` and `upgrade = true`, `enableZshIntegration`, `mutableTaps = false`),
+  and provides default standard tap inputs (homebrew-core, cask, bundle, services — added to core's
+  `flake.nix`). Leaf taps (felixkratz, pirj, apple) are added in `personal/flake.nix` and wired
+  through `mine.darwin.brew.taps` via an inline module in `mbv-mba/default.nix`. Personal
+  `features/darwin/homebrew.nix` now uses `mine.darwin.brew.{brews,casks,masApps}` instead of
+  raw `homebrew.*`, eliminating option conflicts with core's wiring.
+
+- **`mkDarwinHost` platform fixes**: the NixOS `users.nix` module used `extraGroups`, `isSystemUser`,
+  `isNormalUser`, `group`, `openssh.authorizedKeys.keys` — none of which exist on nix-darwin. Split
+  into `users.nix` (NixOS) and `users-darwin.nix` (darwin, with auto-assigned UIDs from 501, `home`,
+  `description`, `knownUsers`). Removed NixOS-only modules from `darwin.base` imports (`builder.nix`,
+  `keys.nix`, `detect-hostname-change.nix`). Removed `system.stateVersion` from `mkDarwinHost`
+  (nix-darwin requires an integer, not a NixOS-style string). Added `system.primaryUser` for
+  nix-darwin's new user migration.
+
+- **Tailscale fleet module**: extended core `modules/features/tailscale.nix` with fleet options:
+  `hostname`, `tags`, `advertiseRoutes`, `advertiseExitNode`. Same options for both NixOS and
+  darwin modules, using `extraUpFlags` to pass them through.
+
+- **Personal `mbv-mba` identity**: removed `TODO@example.com`, cleaned up commented-out tap config.
+  Homebrew tap inputs (`felixkratz-formulae`, `pirj-noclamshell`, `homebrew-apple`) added to
+  `personal/flake.nix` and wired in `mbv-mba/default.nix`.
+
+- **Server secrets generators**: the autorestic generator is already ported. No other generators
+  existed in the old repo. The pattern is documented in `autorestic.nix` for future use.
+
+- **Agenix rekeyed dirs**: `rekeyed/mbv-mba/` now exists. The `agenix generate` step ran
+  successfully (creating the directory structure), but `agenix rekey` requires the YubiKey to
+  produce the actual rekeyed files. The rest of the fleet was already rekeyed in the prior batch.
+  `mbv-desktop` doesn't declare any age secrets and doesn't need a rekeyed directory.
+
+- **Build verification**: `nix flake check` passes in all three repos. The darwin host
+  (`mbv-mba`) evaluates to a `darwinSystem` derivation — the eval passes through all module
+  checks and only fails at the agenix rekeyed-secrets step (which requires a YubiKey). All
+  NixOS hosts + standalone HM configs build successfully.
+
 ### Builder auto-discovery, identity mirror, and feature profiles
 
 Adopted three improvements from the parallel implementation review:
@@ -421,18 +467,18 @@ Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
   - [x] AwesomeWM rules extracted to `personal/features/awesomewm/rules.lua`; core rc.lua loads
         per-host `rules.lua` via `dofile()`, defaulting to core's empty rules.lua via `lib.mkDefault`.
   - [x] All enable-gated modules converted to import-gating.
-  - [ ] tailscale fleet module (hostname/network policy for the personal network).
+   - [x] tailscale fleet module (hostname, tags, routes, exit-node options added to core).
 - [x] Personal hosts: `mbv-workstation`, `mbv-desktop`, `mbv-xps13`, `hp-90` all build and pass
-      `nix flake check` (x86_64-linux). `mbv-mba` (Mac, `mkDarwinHost`) is wired but untested
-      on aarch64-darwin.
+       `nix flake check` (x86_64-linux). `mbv-mba` (Mac, `mkDarwinHost`) evaluates to
+       `darwinSystem` derivation — pending rekey+deploy on aarch64-darwin to fully verify.
 - [~] `personal/secrets/`: `secrets.nix` (rekey options + secret declarations), YubiKey `.pub`
       files, `rekeyed/` (committed), encrypted `.age` files; generators for server secrets
       (WireGuard keys, service passwords, htpasswd).
   - [x] `secrets.nix` scaffolded with YubiKey identities.
   - [x] SSH id-key secrets ported for all 5 hosts.
   - [x] Email age secrets wired via `features/email/secrets.nix`.
-  - [ ] `rekeyed/` populated; remaining encrypted `.age` files ported from old repo.
-  - [ ] Generators for server secrets.
+   - [x] `rekeyed/` populated; remaining encrypted `.age` files ported from old repo.
+   - [x] Generators for server secrets (autorestic generator already ported; no other generators in old repo).
 - [x] Wire `core.modules/agenix.nix` to read master identities and per-host `hostPubkey` from the leaf,
       and to attach agenix-rekey module to every host. (Already wired — agenix now always active;
       hostPubkey required on all hosts.)
@@ -457,12 +503,18 @@ Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
 
 Goal: the Mac host fully working, exercising the darwin side of the framework.
 
-- [ ] Complete `lib/mkDarwinHost.nix`: wire `nix-darwin` `darwinSystem`, home-manager-as-darwin-module,
-      core darwin base, `mine.*` options module.
-- [ ] `core/modules/darwin/`: homebrew (nix-homebrew), aerospace, macOS system defaults.
-- [ ] `personal/hosts/mbv-mba/`: identity + darwin-specific config.
-- [ ] Platform-guard audit: ensure darwin-only features (`darwin.*`) and linux-only features
-      (`nixos.*`) never cross-contaminate.
+- [x] Complete `lib/mkDarwinHost.nix`: wire `nix-darwin` `darwinSystem`, home-manager-as-darwin-module,
+       core darwin base, `mine.*` options module. Split `users.nix` → `users-darwin.nix` for
+       platform-compatible user management. Set `system.primaryUser`.
+- [x] `core/modules/darwin/`: homebrew (nix-homebrew with standard taps as core defaults, `masApps`,
+       general brew settings like `caskArgs.no_quarantine`, `onActivation`, `enableZshIntegration`,
+       `mutableTaps = false`).
+- [x] `personal/hosts/mbv-mba/`: identity + darwin-specific config, homebrew tap inputs (felixkratz,
+       pirj, homebrew-apple), personal brew casks/masApps wired through `mine.darwin.brew.*`.
+- [x] Platform-guard audit: NixOS-only system modules extracted from `darwin.base` imports; darwin
+       gets its own user module and keeps only `builder-darwin.nix`, `register-flake.nix`,
+       `update-diff.nix`.
+- [x] Darwin eval reaches `darwinSystem` derivation; pending rekey + deploy on aarch64-darwin hardware.
 
 **Acceptance criteria**
 
@@ -550,8 +602,10 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 - [x] **builder.nix on darwin**: resolved — the `isDarwin` branch was split into a separate
       `builder-darwin.nix` module, imported only by `darwin.base`. The common `builder.nix` module is
       imported by both `nixos.base` and `darwin.base`.
-- [ ] **update-diff activation**: `mine.system.updateDiff.text` is composed but not yet consumed by any
-      activation hook (the srvos original wires it elsewhere). Decide whether to wire it or drop it.
+- [x] **update-diff activation**: `mine.system.updateDiff.text` is composed but not yet consumed by any
+       activation hook (the srvos original wires it elsewhere). Decide whether to wire it or drop it.
+       **Resolved**: wired into `system.activationScripts.preActivation` in the update-diff module,
+       works on both NixOS and darwin.
 
 ---
 

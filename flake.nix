@@ -43,6 +43,18 @@
 
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
 
+    homebrew-core.url = "github:Homebrew/homebrew-core";
+    homebrew-core.flake = false;
+
+    homebrew-cask.url = "github:Homebrew/homebrew-cask";
+    homebrew-cask.flake = false;
+
+    homebrew-bundle.url = "github:Homebrew/homebrew-bundle";
+    homebrew-bundle.flake = false;
+
+    homebrew-services.url = "github:Homebrew/homebrew-services";
+    homebrew-services.flake = false;
+
     direnv-instant.url = "github:Mic92/direnv-instant";
     direnv-instant.inputs.nixpkgs.follows = "nixpkgs";
   };
