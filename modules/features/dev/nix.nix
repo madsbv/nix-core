@@ -1,7 +1,7 @@
 _: {
   flake.modules.homeManager.nix-dev = { pkgs, ... }: {
     home.packages = with pkgs; [
-      nixfmt-rfc-style
+      nixfmt
       nil
       deadnix
       statix
