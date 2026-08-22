@@ -228,8 +228,6 @@ in
         };
       };
 
-      # Wrong-host protection (wired by `modules/system/detect-hostname-change.nix`).
-
       # stateVersion, overridable per host. Core warns and falls back to its
       # default when a host leaves it unset; `stateVersionFinal` is the derived
       # value that NixOS / Home Manager wiring consumes.
@@ -260,7 +258,7 @@ in
           }
         );
         # Placeholder satisfying agenix-rekey's unconditional non-empty
-        # assertion while `enable` is false; leaves override when enabling.
+        # assertion; leaves override this when they use agenix.
         default = [
           {
             identity = "/dev/null";
