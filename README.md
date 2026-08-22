@@ -15,7 +15,8 @@ repositories.
 
 Manage a heterogeneous fleet declaratively:
 
-- **Personal**: a NixOS desktop, a NixOS laptop, one or more NixOS home servers, and a nix-darwin Mac.
+- **Personal**: a NixOS desktop, a NixOS laptop (headless home-assistant server), one or more NixOS home
+  servers, and a nix-darwin Mac.
 - **Work**: a work laptop that today runs standalone Home Manager (inside WSL) and will migrate to
   nixos-wsl.
 
@@ -87,7 +88,7 @@ notes in PLAN.md).
 | AD-1 | **Three-repo diamond**: `core ← personal`, `core ← work` | Work isolation is a hard requirement; both leaves share generic config without work ever seeing personal data. |
 | AD-2 | **Core contains no hosts, no identity, no secrets** | Keeps core forkable/public-able, and makes the sharing boundary auditable. |
 | AD-3 | **flake-parts + dendritic feature modules** | Every `.nix` file (except entry points) is a flake-parts module; features span NixOS + nix-darwin + Home Manager in one file. This is the community's answer to cross-class sharing. Modules auto-loaded with import-tree. |
-| AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.primaryUser`, `mine.users`, `mine.location.*`, `mine.network.tailscale.enable`, ...) with no defaults. `mine.user` is derived from the primary user; feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
+| AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.flakeRoot`, `mine.primaryUser`, `mine.users`, `mine.location.*`, `mine.network.dns.*`, `mine.ssh.*`, `mine.system.*`, ...) with no identity defaults. `mine.user` is derived from the primary user; feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
 | AD-5 | **Thin builder library, plus class-keyed module registry** | Core exports the builders (`config.flake.lib.mkNixosHost` / `mkDarwinHost` / `mkHomeConfig` / `mkDeploy`, encapsulating all wiring) **and** the per-class module registry (`config.flake.modules.{nixos,homeManager,darwin}.*`), so leaves can drop to raw modules when they need to. |
 | AD-6 | **Version pinning owned by core** | Leaves follow `core/nixpkgs`; core's builders reference core-pinned home-manager / nix-darwin / agenix-rekey / deploy-rs / nixos-wsl. One lock to update, no drift between personal and work. |
 | AD-7 | **Secrets: agenix-rekey, per leaf** | Keeps the existing YubiKey master-key workflow. Generators + dummy-pubkey bootstrap suit home servers. Core wires the *mechanism*; each leaf owns its encrypted files, `secrets.nix`, and `rekeyed/` outputs. |
@@ -108,7 +109,7 @@ core/
 │   ├── agenix.nix            # agenix(-rekey) wiring, per class (nixos + homeManager + darwin)
 │   ├── base.nix              # composites: nixos.base / darwin.base / homeManager.base
 │   ├── color-scheme.nix      # base16 nixos/homeManager/darwin modules, default molokai
-│   ├── treefmt.nix           # nixfmt / statix / deadnix, wired into `nix flake check`
+│   ├── (treefmt config)      # nixfmt / statix / deadnix, wired into `nix flake check` (in flake-module.nix)
 │   ├── devShell.nix          # core dev shell (curried over core's inputs)
 │   ├── _hm-mirror.nix        # helper: prune-based identity mirror for Home Manager evals
 │   ├── profiles/             # role aggregates: base, shell, dev (class-keyed modules)
@@ -116,10 +117,9 @@ core/
 │   │   ├── editors/          #   emacs.nix, nixvim.nix
 │   │   ├── dev/              #   git.nix, gh.nix, ssh.nix, direnv.nix, toolchains
 │   │   ├── shell.nix         #   zsh/fish + starship + fzf/zoxide/eza/bat
-│   │   ├── tailscale.nix     #   nixos service + hm cli (default off)
-│   │   ├── yubikey.nix       #   (migration M2)
-│   │   ├── laptop.nix        #   reserved for a future laptop (migration M2)
-│   │   └── desktop.nix       #   generic desktop bits, platform-guarded
+│   │   ├── tailscale.nix     #   nixos/darwin service + hm cli (import-gated)
+│   │   ├── yubikey.nix       #   yubikey-agent service + hm cli
+│   │   └── desktop/          #   generic desktop bits, platform-guarded (pipewire, lightdm, ...)
 │   ├── system/               # keys, builder, users framework, update-diff, register-flake, ...
 │   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...)
 │   ├── darwin/               # darwin-only: homebrew.nix (nix-homebrew wiring)
@@ -129,7 +129,6 @@ core/
 │   ├── mkDarwinHost.nix      # registered as config.flake.lib.mkDarwinHost
 │   ├── mkHomeConfig.nix      # registered as config.flake.lib.mkHomeConfig
 │   └── mkDeploy.nix          # registered as config.flake.lib.mkDeploy
-├── pkgs/                     # shared custom packages
 ├── README.md
 └── PLAN.md
 ```
@@ -194,7 +193,7 @@ Core declares options such as:
 - `mine.user` — derived alias of `mine.users.<primaryUser>`; inside a Home Manager evaluation it
   resolves to the *current* user
 - `mine.location.timezone`, `mine.location.latitude`, `mine.location.longitude`
-- `mine.network.tailscale.enable`
+- `mine.network.dns.*`
 - `mine.system.stateVersion` — per-host NixOS/Home Manager stateVersion override; when unset core falls
   back to its default (`25.05`) and warns at build time. Set it per host so upgrades are intentional.
 
@@ -230,8 +229,8 @@ the builders include by default in both integrated and standalone Home Manager �
 ## Work isolation (audit checklist)
 
 - [ ] Work's flake input graph is exactly `{ nixpkgs (→ core), core }`. Nothing personal.
-- [ ] `mine.network.tailscale.enable` defaults to `false`; work never enables it and defines its own
-      VPN feature in the work repo.
+- [ ] The tailscale module is never imported in `work`; work defines its own VPN feature in the work
+      repo.
 - [ ] Git/editor/dev modules in core are value-driven by `mine.*`; work and personal get correct
       identities with zero cross-repo data.
 - [ ] Core git history contains no identity, hostnames, or secrets.
@@ -244,7 +243,7 @@ the builders include by default in both integrated and standalone Home Manager �
 - **Local dev loop against core**: `--override-input core path:../core` on any build/deploy command.
 - **Check**: `nix flake check` in each repo. Core is checkable without any secrets; leaves build the
   already-rekeyed `rekeyed/` outputs, so builds stay pure.
-- **Formatting/linting**: `nixfmt` (RFC style), `statix`, `deadnix`.
+- **Formatting/linting**: `nixfmt`, `statix`, `deadnix` (via treefmt).
 
 ### Known friction
 

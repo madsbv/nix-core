@@ -38,10 +38,11 @@ leaf proving cross-repo consumption.
 
 - [x] Add `import-tree`-style auto-loader (`lib/load.nix`; files under `modules/` become flake-parts
       modules; files starting with `_` are treated as helpers and skipped).
-- [x] Declare the `mine.*` option namespace in `modules/options.nix` (no defaults):
-      `mine.hostName`, `mine.user.{username,fullName,email}`, `mine.location.{timezone,latitude,longitude}`,
-      `mine.network.tailscale.enable`, plus `mine.agenix.{enable,masterIdentities,hostPubkey,
-      localStorageDir,generatedSecretsDir}`.
+- [x] Declare the `mine.*` option namespace in `modules/options.nix`:
+      `mine.hostName`, `mine.flakeRoot`, `mine.primaryUser`, `mine.users`/`mine.user`,
+      `mine.location.{timezone,latitude,longitude}`, `mine.network.dns.*`, `mine.ssh.*`,
+      `mine.remoteBuilder.*`, `mine.prefetch.*`, `mine.system.*`, plus
+      `mine.agenix.{masterIdentities,hostPubkey,localStorageDir,secretsDir,generatedSecretsDir}`.
 - [x] Add `modules/base.nix` composing `nixos.base` / `darwin.base` / `homeManager.base` (initial
       contents: imports of the options module + agenix wiring + minimal per-class base).
 - [x] Add representative feature modules to prove the pattern:
@@ -488,7 +489,7 @@ Goal: personal fleet fully working end-to-end with agenix-rekey and deploy-rs.
   - [x] Real host nodes for all 5 hosts wired.
 - [x] `justfile`: `switch <host>`, `update` (`nix flake update core`), `rekey`, `deploy <node>`,
       `edit-secret <name>`.
-- [ ] Document server bootstrap (nixos-anywhere + disko) in the leaf README.
+- [x] Document server bootstrap (nixos-anywhere + disko) in the leaf README.
 
 **Acceptance criteria**
 
@@ -551,12 +552,17 @@ Goal: work laptop builds from core alone; today HM-only, migrates to nixos-wsl.
 
 Goal: maintainability and confidence.
 
-- [ ] nixfmt-rfc-style + statix + deadnix configured and passing in all three repos.
-- [ ] CI (GitHub Actions or equivalent) per repo: `nix flake check`; core checkable without secrets;
-      leaves build committed `rekeyed/` outputs.
-- [ ] Optional stub-input pattern in core so any public CI doesn't require private inputs.
-- [ ] Optional namaka snapshot tests in core for representative modules.
-- [ ] Document `--override-input core path:../core` dev loop in each leaf README.
+- [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
+- [~] CI (GitHub Actions or equivalent) per repo: `nix flake check`. Core's workflow is in place
+      (`core/.github/workflows/ci.yml`, checkable without secrets). Leaf CI is pending repo hosting:
+      leaves pin `core` as a `path:` input, so their workflow must check out core and run
+      `nix flake check --override-input core path:<core-checkout>`; `nix flake check` is system-local, so
+      the aarch64-darwin host is skipped on Linux runners.
+- [~] Stub-input pattern in core so any public CI doesn't require private inputs — **deferred**: all of
+      core's current inputs are public, so nothing blocks a public fork's CI today; revisit when a
+      private input is added.
+- [~] Optional namaka snapshot tests in core for representative modules — **deferred**.
+- [x] Document `--override-input core path:../core` dev loop in each leaf README.
 
 ---
 
@@ -594,11 +600,8 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 - [ ] **disko layout**: server partitioning/impermanence specifics.
 - [ ] **Deployment of HM-only work laptop**: confirm SSH reachability / `home-manager switch` locally
       inside WSL before deploy-rs.
-- [ ] **mkDeploy leaf API**: the builder returns `{deploy; checks}`, which a leaf must split across
-      `config.flake.deploy` and `perSystem.checks` (call twice / capture); `options.flake.deploy` is
-      unused; `deployChecks` transposition can't be written by a plain function. Fix as the first M3
-      item, likely via builders-as-flake-parts-modules. See the implementation log section "mkDeploy leaf
-      API — known issues and next step".
+- [x] **mkDeploy leaf API**: resolved via builders-as-flake-parts-modules — `mkDeploy` now returns a
+      module fragment `{ flake.deploy; perSystem; }` (see "mkDeploy leaf API — resolved" in the log).
 - [x] **builder.nix on darwin**: resolved — the `isDarwin` branch was split into a separate
       `builder-darwin.nix` module, imported only by `darwin.base`. The common `builder.nix` module is
       imported by both `nixos.base` and `darwin.base`.
@@ -641,7 +644,8 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 - **Hostnames stay `mbv-*`** — preserves host keys, `rekeyed/`
   paths, deploy-rs config, tailnet identity, DNS.
 - **No dedicated laptop** — current fleet is desktop + 3 servers + Mac; `lapis` is reserved for a future
-  machine, and `features/laptop.nix` is ported but only enabled then.
+  machine. The `laptop` feature (brightness/lid handling) is ported to **personal**
+  (`features/laptop.nix`) and is already used by `mbv-workstation` and `mbv-xps13`.
 - **Work repo is green-field** — nothing migrates into `work` except shared `core` features; the
   migration scaffolds `work/` anyway.
 - **Color-scheme goes to core** — base16 wiring + the `molokai` scheme are generic theming.
@@ -659,6 +663,10 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
   refactor (see implementation log).
 
 ## Doomemacs — Option 3: store-built DOOMDIR
+
+> Status: **not implemented** — this is a design spec for a future milestone. No
+> `lib/mkDoomdir.nix`, `flake.doomdirs`, leaf `doom/` overlays, or `just doomdir` helper exist yet.
+> `features/editors/emacs.nix` currently only wires `services.emacs`.
 
 The doom config is nix-managed end to end. A single derivation composes the whole `$DOOMDIR` from
 core's shared doom tree + the active leaf's overlay and materializes it in the store; `~/.config/doom`
@@ -789,7 +797,7 @@ surface immediately.
 | — (new) | `core` | Fresh repo, clean history (forkable/public). |
 | — (new) | `work` | Fresh repo; only input is `core`. |
 | systemModules/common, users, keys, builder, update-diff, register-flake, yubikey-agenix-rekey | core `modules/system/*`, `modules/agenix.nix` | Parameterized: nodes, host keys, identities, master identities come from the leaf via options. |
-| nixosModules/common, users, tailscale, yubikey, laptop, detect-hostname-change | core `modules/nixos/base.nix`, `features/tailscale.nix`, `features/laptop.nix` | Personal secret paths (restic/wifi) stripped. `mine.network.tailscale.enable` drives tailscale. |
+| nixosModules/common, users, tailscale, yubikey, laptop, detect-hostname-change | core `modules/nixos/base.nix`, `features/tailscale.nix`, `features/desktop/*`; personal `features/laptop.nix` | Personal secret paths (restic/wifi) stripped. Tailscale is import-gated (import = enable). |
 | homeManagerModules dev/×13, git, ssh, terminal, neovim, emacs, user-profile | core `features/dev/*`, `features/dev/git.nix`, `features/dev/ssh.nix`, `features/shell.nix`, `features/editors/*` | Identity switches from `local.userProfile` to `mine.user.*`. |
 | presets system/common(+packages/home-manager), nixos/common, nixos/efi, nixos/tracing, home-manager/common | core profiles + base composites | `nixos/desktop` split: generic (pipewire/lightdm/portal/fonts) → core `desktop` profile; app-specific → personal. |
 | overlays/, color-scheme (molokai + base16), nox, devShell; `lib/mkDarwinHost` + minimal darwin wiring; inputs fenix/base16/hosts/direnv-instant/impermanence/disko/deploy-rs/agenix-rekey/nix-auth/nix-darwin | core `overlays/`, `pkgs/`, devShell, `lib/mkDarwinHost.nix`, `flake.nix` | Color scheme per decision; input ownership follows the modules. |
@@ -810,9 +818,9 @@ surface immediately.
 > needed for host builds; they stay on the M2/M6 checklists.
 
 - [x] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
-- [x] `modules/options.nix` — declare `mine.*` (hostName, user.{username,fullName,email},
-      location.{timezone,latitude,longitude}, network.tailscale.enable), ported from `systemModules/common`
-      + `homeManagerModules/user-profile`. (Plus `mine.agenix.*`.)
+- [x] `modules/options.nix` — declare `mine.*` (hostName, flakeRoot, primaryUser, users/user,
+      location.{timezone,latitude,longitude}, network.dns, ssh, remoteBuilder, prefetch, system),
+      ported from `systemModules/common` + `homeManagerModules/user-profile`. (Plus `mine.agenix.*`.)
 - [x] `modules/agenix.nix` — rekey mechanism from `systemModules/yubikey-agenix-rekey`; options
       `masterIdentities` / `hostPubkey` / `localStorageDir` / `generatedSecretsDir` supplied by the leaf.
 - [x] `modules/system/*` — keys, builder, users framework (rewritten around Option B: `mine.primaryUser` +
@@ -827,8 +835,9 @@ surface immediately.
 - [x] Color-scheme (`modules/color-scheme.nix`: base16 nixos/homeManager/darwin modules defaulting to the
       ported `molokai` scheme) + core inputs `base16` (`github:SenchoPens/base16.nix`, no nixpkgs follow)
       and `impermanence` (follows nixpkgs). Core devShell + treefmt-nix done.
-- [ ] Overlays, `pkgs` (nox et al.), and the remaining core-owned inputs (fenix, hosts, direnv-instant,
-      disko, nix-auth) — not needed for host builds; deferred.
+- [ ] Overlays, `pkgs` (nox et al.), and the remaining core-owned inputs (fenix, hosts, nix-auth) —
+      not needed for host builds; deferred. (`disko` and `direnv-instant` have since landed as core
+      inputs.)
 - [x] Proof modules: `shell`, `git`, and `ssh` feature files, plus a scratch NixOS host and a standalone
       `mkHomeConfig`, verified in both `personal` and `work` (`2f9d11b`). *(Written from scratch rather than
       ported from the old repo; `git` reads `mine.user.*`. `ssh` is a minimal stub here — its email-driven
@@ -861,7 +870,8 @@ before the next item.
       `mine.network.tailscale.authKeyFile` for pre-shared-key hosts).
 - [x] `features/yubikey.nix` (NixOS + darwin `services.yubikey-agent` + CLI tools; HM packages CLI).
       Personal secrets infrastructure created in the leaf (pubkeys, encrypted files, `secrets.nix`).
-- [ ] `features/laptop.nix` (from `nixosModules/laptop`; reserved for a future laptop).
+- [x] `laptop` feature (from `nixosModules/laptop`) — ported to `personal/features/laptop.nix`
+      (brightness/lid handling), used by `mbv-workstation` and `mbv-xps13`.
 - [x] Core profiles: `modules/profiles/{base,system,shell,dev-base,dev,editors,terminal}` aggregates.
 
 **Acceptance criteria**
@@ -902,8 +912,8 @@ before the next item.
 
 - [ ] Create `work/` (fresh; only input `core`), `work/hosts/work-laptop/` identity + `home.nix` via
       `mkHomeConfig`, work-only agenix store + committed `rekeyed/`, `deploy.nix` + `justfile`.
-- [ ] Isolation audit: input graph is exactly `{core, nixpkgs→core}`; `mine.network.tailscale.enable`
-      false; `rg` / `nix eval` show no personal references.
+- [ ] Isolation audit: input graph is exactly `{core, nixpkgs→core}`; the tailscale module is never
+      imported; `rg` / `nix eval` show no personal references.
 - [ ] Reserve nixos-wsl migration (module toggle, later).
 
 **Acceptance criteria**
@@ -912,8 +922,9 @@ before the next item.
 
 ### M5 — Hardening, CI, cleanup (delivers Milestone 6)
 
-- [ ] nixfmt-rfc-style + statix + deadnix in all three repos; CI (`nix flake check`) per repo; document
-      `--override-input core path:../core`.
+- [x] `nixfmt` + statix + deadnix in all three repos (via treefmt).
+- [~] CI (`nix flake check`) per repo — core workflow in place; leaf CI pending repo hosting (see M6).
+- [x] Document `--override-input core path:../core` in each leaf README.
 - [ ] Final sweep: per-host `autoUpgrade.flake` → leaf repo, drop dead code (`ephemeral` host, broken
       `presets/nixos/server`), reconcile README/PLAN text with the darwin amendment, optionally update the
       machine inventory (no laptop).
