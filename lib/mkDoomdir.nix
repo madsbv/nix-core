@@ -109,6 +109,15 @@ in
         fi
       done
 
+      # Config fragments: core config/ + leaf config-extra/ are separate
+      # namespaces, loaded in order by config.el and config-extra.el.
+      if [ -d ${coreDir}/config ]; then
+        cp -r ${coreDir}/config "$out/config"
+      fi
+      if [ -d ${leafDir}/config-extra ]; then
+        cp -r ${leafDir}/config-extra "$out/config-extra"
+      fi
+
       # Module union: leaf modules overwrite core modules on name collision.
       if [ -d ${coreDir}/modules ]; then
         cp -r ${coreDir}/modules "$out/modules"

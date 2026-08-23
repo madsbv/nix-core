@@ -17,6 +17,10 @@ update:
 leaf := `[ -d ../personal ] && echo ../personal || echo ../work`
 host := `hostname`
 
+# Build the store DOOMDIR to a test link only (no relink, no doom sync).
+doomdir-build:
+    nix build --out-link /tmp/doomdir-test --print-out-paths "{{leaf}}#doomdirs.{{host}}"
+
 # Rebuild the store DOOMDIR, relink ~/.config/doom, then doom sync.
 doomdir:
     set -eu
