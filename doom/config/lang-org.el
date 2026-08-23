@@ -36,8 +36,10 @@
             (org-id-get-with-outline-path-completion)))
   (org-link-set-parameters "id" :complete 'org-id-complete-link))
 
-;; org-roam — generic behavior (directory set in leaf)
+;; org-roam — generic behavior (directory set in leaf). Deferred so the leaf's
+;; org-roam-directory value is applied before autosync runs.
 (use-package! org-roam
+  :defer t
   :config
   (org-roam-db-autosync-mode)
   (require 'org-roam-protocol))
