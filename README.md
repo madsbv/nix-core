@@ -271,10 +271,37 @@ CachyOS. None of it is required for correctness.
 - **Memory/IO sysctl tuning** (`boot.kernel.sysctl`) — cheap, modest; bundle with the kernel feature.
 - **ananicy** (`services.ananicy` + `ananicy-cpp` + `ananicy-rules-cachyos`) — auto-nice for desktop
   responsiveness under load; heuristic, needs per-host validation.
-- **Selective recompilation** (`-march=x86-64-v3/v4`, `-O3`, LTO for a few packages) — explicitly
-  deprioritized: largest cost (custom binary cache, rebuilds) for the smallest gain.
+- **Selective recompilation** (`-march=x86-64-v3/v4`, `-O3`, LTO for a few packages) — deprioritized
+  fleet-wide (custom binary cache, rebuilds) except for Emacs, the one small daily-driver where it is
+  worth it (see below).
 
 zRAM, kernel, sched-ext, ananicy, and sysctl are NixOS-only (not darwin); recompilation would apply
 everywhere but is least useful on the Mac.
+
+### Emacs
+
+nixpkgs' default `emacs30` is already near-optimal — native-comp with full AOT, tree-sitter, and sqlite
+are all on by default, so no rebuild is needed for those. The remaining levers:
+
+- **`-march=x86-64-v3` (or `native`) on the C core** via `overrideAttrs` (`NIX_CFLAGS_COMPILE`), and on
+  the native-compiled `.eln` via `native-comp-driver-options` — the one worthwhile recompile, cheap
+  because Emacs is small and already a custom build.
+- **GC/startup tuning** — already largely handled by Doom Emacs (it raises `gc-cons-threshold` during
+  init and defers package loading), so there may be little or nothing left to add; verify before adding
+  further tweaks.
+- `native-comp-speed 3` + `native-comp-async-jobs-number = (cores)` for user packages.
+
+### Browser (LibreWolf)
+
+Firefox-based is a hard requirement, so the browser stays LibreWolf; recompiling it is not worthwhile
+(browser perf is JS/GPU/IO-bound and a rebuild takes hours).
+
+- **`librewolf-bin` instead of `librewolf`** — the official prebuilt is Mozilla's LTO + PGO build,
+  whereas nixpkgs' source build is LTO-only. Zero-cost win (prebuilt-binary caveats apply).
+- **VA-API hardware video decode** (`media.ffmpeg.vaapi.enabled`, `media.ffvpx.enabled=false`, plus
+  `MOZ_X11_EGL=1` on X11 and the matching VA driver) — the biggest real-world win on the desktop.
+- **WebRender compositor** (`gfx.webrender.compositor`) and minor process/memory tweaks.
+- LibreWolf's `privacy.resistFingerprinting` (on by default) costs some perf by design — a privacy
+  tradeoff, not something to disable.
 
 See [PLAN.md](./PLAN.md) for the detailed implementation plan.
