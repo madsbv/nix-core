@@ -35,11 +35,16 @@ let
     identity:
     (lib.evalModules {
       modules = [
-        # options.nix writes `config.assertions` unconditionally; declare it so
-        # the standalone eval has somewhere to put it (NixOS/HM declare it in
-        # their module systems, but this mini-eval does not).
+        # options.nix writes `config.assertions` and (conditionally)
+        # `config.warnings`; declare them so the standalone eval has somewhere to
+        # put them (NixOS/HM declare them in their own module systems, but this
+        # mini-eval does not).
         {
           options.assertions = lib.mkOption {
+            type = lib.types.listOf lib.types.raw;
+            default = [ ];
+          };
+          options.warnings = lib.mkOption {
             type = lib.types.listOf lib.types.raw;
             default = [ ];
           };
