@@ -9,7 +9,7 @@
 # symlinks to. Identity is injected via a generated `identity.el` built from a
 # minimal `mine.*` evaluation (not a full host eval).
 { inputs, lib }:
-{ config, ... }:
+_:
 let
   # Two-pass identity extraction: leaf `identity.nix` files may set `mine.*`
   # options declared outside `modules/options.nix` (e.g. a leaf system module),
@@ -17,7 +17,8 @@ let
   # undefined options. First capture the raw `mine` value against a permissive
   # attrset, then prune it to the options `options.nix` actually declares
   # (reusing the same prune logic the Home Manager mirror uses).
-  rawMine = identity:
+  rawMine =
+    identity:
     (lib.evalModules {
       modules = [
         {
@@ -26,18 +27,30 @@ let
             default = { };
           };
         }
-      ] ++ identity;
+      ]
+      ++ identity;
     }).config.mine;
 
-  resolvedMine = identity:
+  resolvedMine =
+    identity:
     (lib.evalModules {
       modules = [
+        # options.nix writes `config.assertions` unconditionally; declare it so
+        # the standalone eval has somewhere to put it (NixOS/HM declare it in
+        # their module systems, but this mini-eval does not).
+        {
+          options.assertions = lib.mkOption {
+            type = lib.types.listOf lib.types.raw;
+            default = [ ];
+          };
+        }
         ../modules/options.nix
         (import ../modules/_hm-mirror.nix { osMine = rawMine identity; })
       ];
     }).config.mine;
 
-  identityEl = mine:
+  identityEl =
+    mine:
     let
       email = if mine.user.email == null then "" else mine.user.email;
     in
