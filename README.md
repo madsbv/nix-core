@@ -260,4 +260,21 @@ the builders include by default in both integrated and standalone Home Manager �
 - **Priority discipline**: core defaults use `lib.mkDefault`; leaves override freely with
   `lib.mkForce` only as an escape hatch.
 
+## Potential future work — performance optimizations (opt-in)
+
+Not implemented — design notes for a future opt-in feature (import = enable), modeled loosely on
+CachyOS. None of it is required for correctness.
+
+- **zRAM** (`zramSwap`, zstd) — near-zero cost, cache-safe, clear win on memory-constrained hosts.
+- **Tuned kernel + sched-ext** (`boot.kernelPackages` zen/xanmod + `services.scx`) — cached in nixpkgs;
+  the CachyOS kernel itself needs an external input.
+- **Memory/IO sysctl tuning** (`boot.kernel.sysctl`) — cheap, modest; bundle with the kernel feature.
+- **ananicy** (`services.ananicy` + `ananicy-cpp` + `ananicy-rules-cachyos`) — auto-nice for desktop
+  responsiveness under load; heuristic, needs per-host validation.
+- **Selective recompilation** (`-march=x86-64-v3/v4`, `-O3`, LTO for a few packages) — explicitly
+  deprioritized: largest cost (custom binary cache, rebuilds) for the smallest gain.
+
+zRAM, kernel, sched-ext, ananicy, and sysctl are NixOS-only (not darwin); recompilation would apply
+everywhere but is least useful on the Mac.
+
 See [PLAN.md](./PLAN.md) for the detailed implementation plan.
