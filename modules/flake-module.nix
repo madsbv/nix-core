@@ -124,6 +124,12 @@ in
       description = "deploy-rs deployment nodes.";
     };
 
+    doomdirs = lib.mkOption {
+      type = lib.types.lazyAttrsOf lib.types.raw;
+      default = { };
+      description = "Store-built Doom Emacs DOOMDIRs, keyed by host (via config.flake.lib.mkDoomdir).";
+    };
+
     flakeModules = lib.mkOption {
       type = lib.types.lazyAttrsOf lib.types.deferredModule;
       default = { };
