@@ -31,8 +31,8 @@ _: {
         pkgs.gnumake # :term vterm module build
         pkgs.clang-tools # clang-format (java/web formatting)
         pkgs.libxml2.bin # xmllint (:lang data)
-          pkgs.html-tidy # tidy (:lang web)
-          pkgs.python3Packages.grip # grip (:lang markdown +grip)
+        pkgs.html-tidy # tidy (:lang web)
+        pkgs.python3Packages.grip # grip (:lang markdown +grip)
         pkgs.python3Packages.cython # cython (:lang python +cython)
         pkgs.aspell # (:checkers spell +aspell)
         pkgs.aspellDicts.en
