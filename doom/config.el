@@ -4,6 +4,9 @@
 ;; `doom/` overlay into a read-only store-built `$DOOMDIR` (see PLAN.md:
 ;; "Doomemacs — Option 3"). The store path is read-only, so anything Emacs would
 ;; normally write at runtime is redirected below to XDG state.
+;;
+;; Actual configuration lives in the `config/` fragments below, loaded in order.
+;; The leaf's `config-extra.el` is loaded last, so leaf settings override core.
 
 ;; --- Runtime writes → XDG (read-only DOOMDIR) -------------------------------
 
@@ -17,10 +20,16 @@
                                          (concat (getenv "HOME") "/.local/state"))
                                      "/doom/themes/"))
 
-;; --- Shared defaults --------------------------------------------------------
+;; --- Core config fragments --------------------------------------------------
 
-;; Fleet color scheme (molokai) is the default in core's color-scheme module.
-(setq doom-theme 'doom-molokai)
+(load! "config/ui")
+(load! "config/evil")
+(load! "config/completion")
+(load! "config/editor")
+(load! "config/emacs")
+(load! "config/tools")
+(load! "config/lang-org")
+(load! "config/lang-dev")
 
 ;; --- Leaf overlay -----------------------------------------------------------
 
