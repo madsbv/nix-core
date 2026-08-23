@@ -130,7 +130,9 @@ core/
 │   ├── mkNixosHost.nix       # registered as config.flake.lib.mkNixosHost
 │   ├── mkDarwinHost.nix      # registered as config.flake.lib.mkDarwinHost
 │   ├── mkHomeConfig.nix      # registered as config.flake.lib.mkHomeConfig
-│   └── mkDeploy.nix          # registered as config.flake.lib.mkDeploy
+│   ├── mkDeploy.nix          # registered as config.flake.lib.mkDeploy
+│   └── mkDoomdir.nix         # registered as config.flake.lib.mkDoomdir
+├── doom/                      # shared Doom Emacs tree: init.el, config.el, packages.el, modules/
 ├── README.md
 └── PLAN.md
 ```
