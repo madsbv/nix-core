@@ -673,12 +673,15 @@ in the new wiring before moving on. Stabilizing the old repo is explicitly **not
 
 ## Doomemacs — Option 3: store-built DOOMDIR
 
-> Status: **implemented (scaffolding)** — `lib/mkDoomdir.nix`, `flake.doomdirs`, the core
-> `doom/` tree, and the `just doomdir` helper all exist; personal and work each have a `doom/`
-> overlay and per-host registration. The actual migration of the existing config (`config.el`,
-> `init.el` module list, `packages.el`, `snippets/`) into core + leaf doom trees is a separate
-> follow-up. Literate config (`:config literate`) has been dropped in favor of plain elisp
-> source. `features/editors/emacs.nix` still only wires `services.emacs`.
+> Status: **implemented** — `lib/mkDoomdir.nix`, `flake.doomdirs`, the core `doom/` tree, and the
+> `just doomdir`/`doomdir-build` helpers all exist; the existing config has been ported into the
+> core/leaf split (generic `config/` fragments + `init.el`/`packages.el` in core; personal paths,
+> latex, and mu4e in the leaf overlay). Validated via `doom doctor` and `doom sync` against a
+> writable `/tmp` copy (70 modules, 230 packages, profile built). Literate config
+> (`:config literate`) has been dropped in favor of plain elisp source. `emacs.nix` wraps Emacs with
+> the Doom deps (mu4e/vterm/multi-vterm/pdf-tools/treesit grammars) via `emacsWithPackages` and
+> installs the required binaries/fonts, replacing the old `programs.emacs.extraPackages` (removed in
+> this Home Manager).
 
 The doom config is nix-managed end to end. A single derivation composes the whole `$DOOMDIR` from
 core's shared doom tree + the active leaf's overlay and materializes it in the store; `~/.config/doom`
