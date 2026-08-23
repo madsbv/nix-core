@@ -9,6 +9,8 @@ standalone Home Manager, and nixos-wsl — and across the personal and work depl
 It deliberately contains **no hosts, no identity, and no secrets**. Those live in the two leaf
 repositories.
 
+`core` is public and forkable; `personal` and `work` are private. No license has been chosen yet.
+
 ---
 
 ## Goal
@@ -90,7 +92,7 @@ notes in PLAN.md).
 | AD-3 | **flake-parts + dendritic feature modules** | Every `.nix` file (except entry points) is a flake-parts module; features span NixOS + nix-darwin + Home Manager in one file. This is the community's answer to cross-class sharing. Modules auto-loaded with import-tree. |
 | AD-4 | **Identity injection via custom `mine.*` options** | Core defines options (`mine.hostName`, `mine.flakeRoot`, `mine.primaryUser`, `mine.users`, `mine.location.*`, `mine.network.dns.*`, `mine.ssh.*`, `mine.system.*`, ...) with no identity defaults. `mine.user` is derived from the primary user; feature modules read `config.mine.*`. Leaves set values per host. No `specialArgs` plumbing, no personal values in core. |
 | AD-5 | **Thin builder library, plus class-keyed module registry** | Core exports the builders (`config.flake.lib.mkNixosHost` / `mkDarwinHost` / `mkHomeConfig` / `mkDeploy`, encapsulating all wiring) **and** the per-class module registry (`config.flake.modules.{nixos,homeManager,darwin}.*`), so leaves can drop to raw modules when they need to. |
-| AD-6 | **Version pinning owned by core** | Leaves follow `core/nixpkgs`; core's builders reference core-pinned home-manager / nix-darwin / agenix-rekey / deploy-rs / nixos-wsl. One lock to update, no drift between personal and work. |
+| AD-6 | **Version pinning owned by core** | Leaves follow `core/nixpkgs`; core's builders reference core-pinned home-manager / nix-darwin / agenix-rekey / deploy-rs / nixos-wsl. One lock to update, no drift between personal and work. Channel is `nixos-unstable` everywhere. |
 | AD-7 | **Secrets: agenix-rekey, per leaf** | Keeps the existing YubiKey master-key workflow. Generators + dummy-pubkey bootstrap suit home servers. Core wires the *mechanism*; each leaf owns its encrypted files, `secrets.nix`, and `rekeyed/` outputs. |
 | AD-8 | **Deployment: deploy-rs, per leaf** | deploy-rs deploys NixOS **and** standalone Home Manager profiles over SSH; per-leaf `deploy` output keeps work and personal deployment fully separate. `nixos-anywhere` + disko for server bootstrap. |
 | AD-9 | **nixos-wsl needs no special builder** | nixos-wsl is just a NixOS host plus `nixos-wsl.nixosModules.wsl` in `extraModules`. The work repo passes that module in when it migrates. |
@@ -210,8 +212,8 @@ the builders include by default in both integrated and standalone Home Manager �
 - Each leaf has `secrets/secrets.nix` (rekey options: `masterIdentities`, per-host `hostPubkey`,
   `storageMode = "local"`, `localStorageDir`), encrypted `.age` files, and a **committed** `rekeyed/`
   output directory (keeps builds pure, works with deploy-rs and CI).
-- Personal and work each hold their own secret store; they may share the same YubiKey master identity
-  (same human operator).
+- Personal and work each hold their own secret store with **separate master identities**: `personal`
+  uses the YubiKey; `work` uses a plain (non-YubiKey) age master key for now (stored outside the repo).
 - Servers use **generators** (WireGuard private keys, service passwords, htpasswd) and **dummy-pubkey
   bootstrap** for brand-new hosts.
 - Workflow: `agenix edit <name>` → commit → `agenix rekey --flake .` (YubiKey) → build/deploy.
@@ -244,6 +246,8 @@ the builders include by default in both integrated and standalone Home Manager �
 - **Check**: `nix flake check` in each repo. Core is checkable without any secrets; leaves build the
   already-rekeyed `rekeyed/` outputs, so builds stay pure.
 - **Formatting/linting**: `nixfmt`, `statix`, `deadnix` (via treefmt).
+- **Snapshot tests**: Namaka snapshot tests across core + both leaves are planned (see Milestone 5 in
+  PLAN.md).
 
 ### Known friction
 

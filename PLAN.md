@@ -361,7 +361,7 @@ Gotchas / decisions (feed into README/PLAN text where relevant):
 
 Remaining for Milestone 1:
 
-Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wiring deferred to M3/M5.
+Done. M1 acceptance met (see log entry `2f9d11b`). `mkDeploy`/`justfile` leaf wiring deferred to M3/M6.
 
 ### M3 import-gating conversion (2026-08-09)
 
@@ -524,14 +524,37 @@ Goal: the Mac host fully working, exercising the darwin side of the framework.
 
 ---
 
-## Milestone 5 — Work repo, isolation, nixos-wsl
+## Milestone 5 — Hardening, CI, polish
+
+Goal: maintainability and confidence.
+
+- [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
+- [~] CI (GitHub Actions or equivalent) per repo: `nix flake check`. Core's workflow is in place
+      (`core/.github/workflows/ci.yml`, checkable without secrets). Leaf CI is pending repo hosting:
+      leaves pin `core` as a `path:` input, so their workflow must check out core and run
+      `nix flake check --override-input core path:<core-checkout>`; `nix flake check` is system-local, so
+      the aarch64-darwin host is skipped on Linux runners.
+- [~] Stub-input pattern in core so any public CI doesn't require private inputs — **deferred**: all of
+      core's current inputs are public, so nothing blocks a public fork's CI today; revisit when a
+      private input is added.
+- [ ] Namaka snapshot tests across all three repos (core + personal + work) for representative modules
+      and host configs — an explicit goal, not optional. The `namaka` flake input and the test suite land
+      in a future commit.
+- [x] Document `--override-input core path:../core` dev loop in each leaf README.
+
+---
+
+## Milestone 6 — Work repo, isolation, nixos-wsl
+
+> Deferred to last: the work repo must be pushed to a remote and finished on the work laptop, so it
+> follows every other milestone (personal fleet, hardening, namaka).
 
 Goal: work laptop builds from core alone; today HM-only, migrates to nixos-wsl.
 
 - [ ] `work/features/`: work-specific programs, policies, and VPN.
 - [x] `work/hosts/work-laptop/`: throwaway identity + HM-only profile via `mkHomeConfig` (built and green
       in M1); real work email/name/signing key land with `work/features/`.
-- [ ] `work/secrets/`: work-only agenix-rekey store.
+- [ ] `work/secrets/`: work-only agenix-rekey store, using a plain (non-YubiKey) age master key.
 - [ ] `work/deploy.nix` + `justfile`.
 - [ ] Isolation audit: confirm work's inputs are only core; run `rg`/`nix eval` checks that no personal
       values or personal secrets paths are referenced.
@@ -545,24 +568,6 @@ Goal: work laptop builds from core alone; today HM-only, migrates to nixos-wsl.
 - The work laptop's git identity is the work identity; the same core git module is used.
 - No `personal` flake reference anywhere in `work`.
 - Work host builds as both HM-only and nixos-wsl (module toggled).
-
----
-
-## Milestone 6 — Hardening, CI, polish
-
-Goal: maintainability and confidence.
-
-- [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
-- [~] CI (GitHub Actions or equivalent) per repo: `nix flake check`. Core's workflow is in place
-      (`core/.github/workflows/ci.yml`, checkable without secrets). Leaf CI is pending repo hosting:
-      leaves pin `core` as a `path:` input, so their workflow must check out core and run
-      `nix flake check --override-input core path:<core-checkout>`; `nix flake check` is system-local, so
-      the aarch64-darwin host is skipped on Linux runners.
-- [~] Stub-input pattern in core so any public CI doesn't require private inputs — **deferred**: all of
-      core's current inputs are public, so nothing blocks a public fork's CI today; revisit when a
-      private input is added.
-- [~] Optional namaka snapshot tests in core for representative modules — **deferred**.
-- [x] Document `--override-input core path:../core` dev loop in each leaf README.
 
 ---
 
@@ -592,14 +597,18 @@ nixos-rebuild switch --flake .#<host> --override-input core path:../core
 - [x] **Editors**: resolved — nixvim + packaged emacs via `services.emacs`; the emacs config is
       nix-managed as a store-built `$DOOMDIR` (Option 3) — see
       "Doomemacs — Option 3: store-built DOOMDIR" under Decisions recorded.
-- [ ] **Core visibility**: keep `core` private, or public/forkable? (It is designed to be forkable.)
-- [ ] **Master identity per leaf**: same YubiKey for personal and work secret stores, or separate
-      master identities.
-- [ ] **nixpkgs channel**: `nixos-unstable` now; consider matching HM/nixos release branches per
-      platform later (AD-10, M4).
-- [ ] **disko layout**: server partitioning/impermanence specifics.
-- [ ] **Deployment of HM-only work laptop**: confirm SSH reachability / `home-manager switch` locally
-      inside WSL before deploy-rs.
+- [x] **Core visibility**: resolved — `core` is public/forkable; `personal` and `work` stay private.
+      No license is chosen yet (add a `LICENSE` file before/at the time core goes public).
+- [x] **Master identity per leaf**: resolved — separate master identities per leaf. `personal` uses the
+      YubiKey; `work` uses a plain (non-YubiKey) age master key for now (SSH- or password-derived, stored
+      outside the repo; exact method settled at work bring-up).
+- [x] **nixpkgs channel**: resolved — keep `nixos-unstable` everywhere; core owns the single pin (AD-6).
+- [x] **disko layout**: resolved — `personal/lib/znix-disk.nix` (ZFS + tmpfs + impermanence) is the
+      standardized fleet layout, used as-is.
+- [x] **Deployment of HM-only work laptop**: resolved — local `home-manager switch` (then
+      `nixos-rebuild switch` after nixos-wsl) inside WSL; no remote deploy-rs.
+- [x] **Namaka snapshot tests**: resolved — an explicit Milestone 5 goal (not optional), covering core
+      plus both leaves.
 - [x] **mkDeploy leaf API**: resolved via builders-as-flake-parts-modules — `mkDeploy` now returns a
       module fragment `{ flake.deploy; perSystem; }` (see "mkDeploy leaf API — resolved" in the log).
 - [x] **builder.nix on darwin**: resolved — the `isDarwin` branch was split into a separate
@@ -815,7 +824,7 @@ surface immediately.
 > Status: **done** — framework (`ca41927` → `2f9d11b`), `modules/system/*`, `modules/nixos/base.nix`, and
 > color-scheme all landed; `personal` (NixOS + HM) and `work` (HM) build and pass `nix flake check`.
 > The remaining sub-items (overlays/`pkgs`, fenix/hosts/direnv-instant/disko/nix-auth inputs) are not
-> needed for host builds; they stay on the M2/M6 checklists.
+> needed for host builds; they stay on the M2 and Milestone 5 checklists.
 
 - [x] Scaffold `core/` (fresh git history): flake-parts + import-tree auto-loader; `modules/flake-module.nix`.
 - [x] `modules/options.nix` — declare `mine.*` (hostName, flakeRoot, primaryUser, users/user,
@@ -908,23 +917,13 @@ before the next item.
 - All five hosts build from `personal` + `core`; deploy-rs works; secrets decrypt at activation.
 - `darwin-rebuild switch --flake .#mbv-mba` / deploy-rs works on the Mac.
 
-### M4 — Work repo scaffold (delivers Milestone 5)
-
-- [ ] Create `work/` (fresh; only input `core`), `work/hosts/work-laptop/` identity + `home.nix` via
-      `mkHomeConfig`, work-only agenix store + committed `rekeyed/`, `deploy.nix` + `justfile`.
-- [ ] Isolation audit: input graph is exactly `{core, nixpkgs→core}`; the tailscale module is never
-      imported; `rg` / `nix eval` show no personal references.
-- [ ] Reserve nixos-wsl migration (module toggle, later).
-
-**Acceptance criteria**
-
-- `nix build .#homeConfigurations.<user>` succeeds from `work` + `core` only.
-
-### M5 — Hardening, CI, cleanup (delivers Milestone 6)
+### M4 — Hardening, CI, cleanup (delivers Milestone 5)
 
 - [x] `nixfmt` + statix + deadnix in all three repos (via treefmt).
-- [~] CI (`nix flake check`) per repo — core workflow in place; leaf CI pending repo hosting (see M6).
+- [~] CI (`nix flake check`) per repo — core workflow in place; leaf CI pending repo hosting (see
+      Milestone 5).
 - [x] Document `--override-input core path:../core` in each leaf README.
+- [ ] Namaka snapshot tests across core + both leaves (explicit Milestone 5 goal).
 - [ ] Final sweep: per-host `autoUpgrade.flake` → leaf repo, drop dead code (`ephemeral` host, broken
       `presets/nixos/server`), reconcile README/PLAN text with the darwin amendment, optionally update the
       machine inventory (no laptop).
@@ -932,6 +931,21 @@ before the next item.
 **Acceptance criteria**
 
 - All three repos `nix flake check` green; a fresh-clone build of `personal` and `work` succeeds.
+
+### M5 — Work repo scaffold (delivers Milestone 6)
+
+> Deferred to last (see Milestone 6).
+
+- [ ] Create `work/` (fresh; only input `core`), `work/hosts/work-laptop/` identity + `home.nix` via
+      `mkHomeConfig`, work-only agenix store (plain age master key, no YubiKey) + committed `rekeyed/`,
+      `deploy.nix` + `justfile`.
+- [ ] Isolation audit: input graph is exactly `{core, nixpkgs→core}`; the tailscale module is never
+      imported; `rg` / `nix eval` show no personal references.
+- [ ] Reserve nixos-wsl migration (module toggle, later); deploy via local switch inside WSL.
+
+**Acceptance criteria**
+
+- `nix build .#homeConfigurations.<user>` succeeds from `work` + `core` only.
 
 ## Migration notes
 
