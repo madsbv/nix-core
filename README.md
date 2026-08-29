@@ -121,6 +121,7 @@ core/
 │   │   ├── shell.nix         #   zsh/fish + starship + fzf/zoxide/eza/bat
 │   │   ├── tailscale.nix     #   nixos/darwin service + hm cli (import-gated)
 │   │   ├── yubikey.nix       #   yubikey-agent service + hm cli
+│   │   ├── system/           #   nix-settings (mine.nix.*), hosts blocklist, nox (input-curried)
 │   │   └── desktop/          #   generic desktop bits, platform-guarded (pipewire, lightdm, ...)
 │   ├── system/               # keys, builder, users framework, update-diff, register-flake, ...
 │   └── nixos/                # nixos-only: base.nix (networking/firewall/openssh/zfs/...)

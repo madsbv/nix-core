@@ -67,23 +67,29 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ### P1 — Core inputs & nix settings
 
-- [ ] Port the `nix.*` settings block, synchronized across NixOS / nix-darwin / Home Manager where
+- [x] Port the `nix.*` settings block, synchronized across NixOS / nix-darwin / Home Manager where
       sensible: `substituters` + `trusted-public-keys` (`nix-community.cachix.org`, `cache.garnix.io`,
       `numtide.cachix.org`), `experimental-features` (incl. `ca-derivations`, `recursive-nix`,
       `fetch-closure`, `blake3-hashes`, `auto-allocate-uids`, `cgroups`), `nix.gc` (weekly
       `--delete-older-than 30d`), `optimise.automatic`, `trusted-users`, `download-buffer-size`, `sandbox`,
-      `keep-going`, `show-trace`, `warn-dirty = false`, `max-free`/`min-free`. Declare under `mine.*` so the
-      HM identity mirror carries them. (Nix version / sandbox-security concerns are out of scope.)
-- [ ] Tie global `nixpkgs.config.allowUnfree = true` into this settings work (replaces the old global
-      setting; per-host overrides may remain).
-- [ ] Add `hosts` (StevenBlack) as a core input and wire the `/etc/hosts` blocklist into all NixOS systems
-      and nix-darwin if feasible (analyze the darwin path; Home Manager cannot control `/etc/hosts`).
-- [ ] Add `nox` (`nix-options-search`) as a core input and install it on all hosts.
-- [ ] Add `nix-auth` back to the core devShell.
-- [ ] Introduce an overlays mechanism in core (auto-loaded `overlays/` dir or explicit `nixpkgs.overlays`)
-      and port the `xdg-user-dirs-darwin` patch (compile fix pulled in by xdg-utils → alacritty on Darwin).
-- [ ] Set `preferXdgDirectories = true` on all system types (first verify whether it is now the
-      Home Manager default).
+      `keep-going`, `show-trace`, `warn-dirty = false`, `max-free`/`min-free`. Declared under `mine.nix.*`
+      (single `mine.nix.settings` attrset + `allowUnfree`/`gc`/`optimise` knobs) so the HM identity mirror
+      carries them. (Nix version / sandbox-security concerns are out of scope.)
+- [x] Tie global `nixpkgs.config.allowUnfree = true` into this settings work (replaces the old global
+      setting; per-host overrides may remain). On integrated hosts it is set on the OS nixpkgs; on
+      standalone Home Manager (no OS) it is set in the HM eval, guarded by `!submoduleSupport.enable`.
+- [x] Add `hosts` (StevenBlack) as a core input and wire the `/etc/hosts` blocklist into all NixOS systems
+      and nix-darwin (NixOS via `hosts.nixosModule` + `networking.stevenBlackHosts.enable`; darwin via
+      `environment.etc."hosts"` since nix-darwin has no `networking.extraHosts`). Home Manager cannot
+      control `/etc/hosts`.
+- [x] Add `nox` (`nix-options-search`) as a core input and install it on all hosts (Home Manager
+      `home.packages` via the base composite).
+- [x] Add `nix-auth` back to the core devShell.
+- [x] Overlays: **selective, not auto-loaded** (operator decision) — the `xdg-user-dirs-darwin` patch
+      (compile fix pulled in by xdg-utils → alacritty on Darwin) is defined and applied in the terminal
+      feature's darwin module (`nixpkgs.overlays`), not a global `overlays/` dir.
+- [x] Set `preferXdgDirectories = true` on all system types (verified: it is still *not* the Home Manager
+      default, so core sets it in `homeManager.base`).
 
 ### P2 — System packages & tooling
 
