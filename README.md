@@ -79,7 +79,7 @@ with:
 
 No dedicated laptop is planned; `lapis` is reserved for a future machine. Hostnames are kept as-is to
 preserve host keys, `rekeyed/` paths, deploy-rs config, tailnet identity, and DNS (see the migration
-notes in PLAN.md).
+reference in PLAN.md).
 
 ---
 
@@ -248,7 +248,7 @@ the builders include by default in both integrated and standalone Home Manager �
 - **Check**: `nix flake check` in each repo. Core is checkable without any secrets; leaves build the
   already-rekeyed `rekeyed/` outputs, so builds stay pure.
 - **Formatting/linting**: `nixfmt`, `statix`, `deadnix` (via treefmt).
-- **Snapshot tests**: Namaka snapshot tests across core + both leaves are planned (see Milestone 5 in
+- **Snapshot tests**: Namaka snapshot tests across core + both leaves are planned (see Milestone 6 in
   PLAN.md).
 
 ### Known friction
@@ -306,4 +306,14 @@ Firefox-based is a hard requirement, so the browser stays LibreWolf; recompiling
 - LibreWolf's `privacy.resistFingerprinting` (on by default) costs some perf by design — a privacy
   tradeoff, not something to disable.
 
-See [PLAN.md](./PLAN.md) for the detailed implementation plan.
+## Deferred reimplementation
+
+Features from the old config that are deliberately not ported as-is, but worth rebuilding better later.
+Full descriptions are in PLAN.md's "Deferred reimplementation" section.
+
+- **Remote builders** — Tailscale-based remote Nix builders (`nix.buildMachines`); redesign before porting.
+- **Ephemeral installer / ISO** — nixos-generators + disko + impermanence bootstrapping installer.
+- **File manager** — spacefm (or an alternative); re-check the gcc14 patch.
+- **Full neovim config** — re-port the separate `madsbv/nvim-config` repo into nixvim.
+
+See [PLAN.md](./PLAN.md) for the detailed implementation plan and the list of deliberate omissions.
