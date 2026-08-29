@@ -41,6 +41,15 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
+    hosts.url = "github:StevenBlack/hosts";
+    hosts.inputs.nixpkgs.follows = "nixpkgs";
+
+    nox.url = "github:madsbv/nix-options-search";
+    nox.inputs.nixpkgs.follows = "nixpkgs";
+
+    nix-auth.url = "github:numtide/nix-auth";
+    nix-auth.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
 
     homebrew-core.url = "github:Homebrew/homebrew-core";

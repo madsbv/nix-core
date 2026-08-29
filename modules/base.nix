@@ -20,6 +20,7 @@
         ./options.nix
         config.flake.modules.nixos.agenix
         config.flake.modules.nixos.nix-settings
+        config.flake.modules.nixos.hosts
         ./system/users.nix
         ./system/keys.nix
         ./system/builder.nix
@@ -40,6 +41,7 @@
         ./options.nix
         config.flake.modules.homeManager.agenix
         config.flake.modules.homeManager.nix-settings
+        config.flake.modules.homeManager.nox
         # Prefer XDG dirs on every host type (Home Manager still defaults this
         # to `false`; leaves may override).
         ({ lib, ... }: {
@@ -53,6 +55,7 @@
         ./options.nix
         config.flake.modules.darwin.agenix
         config.flake.modules.darwin.nix-settings
+        config.flake.modules.darwin.hosts
         config.flake.modules.darwin.homebrew
         ./system/users-darwin.nix
         ./system/builder-darwin.nix

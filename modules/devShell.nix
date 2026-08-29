@@ -21,6 +21,7 @@
           deadnix
           config.flake.inputs.deploy-rs.packages.${system}.default
           config.flake.inputs.agenix-rekey.packages.${system}.default
+          config.flake.inputs.nix-auth.packages.${system}.default
         ];
       };
     };
