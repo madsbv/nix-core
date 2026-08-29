@@ -242,6 +242,42 @@ in
       };
     };
 
+    # Nix configuration, synchronized across NixOS / nix-darwin / Home Manager
+    # where sensible (wired by `modules/features/system/nix-settings.nix`).
+    # `settings` and `allowUnfree` are mirrored into Home Manager evaluations
+    # so the standalone and integrated HM evals get the same nix.conf knobs.
+    nix = {
+      settings = lib.mkOption {
+        type = lib.types.attrsOf lib.types.raw;
+        default = { };
+        description = "nix.conf settings shared across NixOS, nix-darwin and Home Manager.";
+      };
+      allowUnfree = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether to allow unfree packages (`nixpkgs.config.allowUnfree`).";
+      };
+      gc = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Whether to periodically garbage-collect the Nix store (NixOS / nix-darwin).";
+        };
+        options = lib.mkOption {
+          type = lib.types.str;
+          default = "--delete-older-than 30d";
+          description = "Arguments passed to `nix-collect-garbage`.";
+        };
+      };
+      optimise = {
+        automatic = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Whether to automatically optimise (hard-link) the Nix store (NixOS / nix-darwin).";
+        };
+      };
+    };
+
     agenix = {
       masterIdentities = lib.mkOption {
         type = lib.types.listOf (
