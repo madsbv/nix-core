@@ -23,8 +23,9 @@ doomdir-build:
 
 # Rebuild the store DOOMDIR, relink ~/.config/doom, then doom sync.
 doomdir:
+    #!/usr/bin/env sh
     set -eu
     out=$(nix build --print-out-paths "{{leaf}}#doomdirs.{{host}}")
     if [ -e "$HOME/.config/doom" ] && [ ! -L "$HOME/.config/doom" ]; then echo "error: $HOME/.config/doom exists and is not a symlink" >&2; exit 1; fi
     ln -sfn "$out" "$HOME/.config/doom"
-    "$HOME/.config/emacs/bin/doom" sync
+    "$HOME/.config/emacs/bin/doom" sync --aot -j 16
