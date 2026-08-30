@@ -63,7 +63,7 @@ _: {
             file = "share/zsh-vi-mode/zsh-vi-mode.plugin.zsh";
           }
         ];
-        initExtra = ''
+        initContent = ''
           source ${pkgs.zsh-autocomplete}/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
         '';
       };
