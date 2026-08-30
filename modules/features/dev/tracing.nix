@@ -1,19 +1,20 @@
 # Tracing / introspection tooling (NixOS only): BPF compiler collection,
-# sysdig, strace and perf. `perf` is taken from the boot kernel's package set so
-# it matches the running kernel.
+# sysdig, strace and perf. Ported from the old `presets/nixos/tracing`, with the
+# same platform guards (bcc/sysdig are unavailable on some architectures).
 _: {
   flake.modules.nixos.tracing =
     {
-      config,
       pkgs,
       ...
     }:
     {
-      programs.bcc.enable = true;
-      programs.sysdig.enable = true;
+      programs.bcc.enable = !pkgs.stdenv.hostPlatform.isRiscV;
+      programs.sysdig.enable = !pkgs.stdenv.hostPlatform.isAarch64 && !pkgs.stdenv.hostPlatform.isRiscV;
+
       environment.systemPackages = [
         pkgs.strace
-        config.boot.kernelPackages.perf
+        # Low priority so bcc's `trace` takes precedence over perf's.
+        (pkgs.lowPrio pkgs.perf)
       ];
     };
 }
