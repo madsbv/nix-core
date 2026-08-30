@@ -4,6 +4,8 @@
     nixos = [
       config.flake.modules.nixos.docker
       config.flake.modules.nixos.rust
+      config.flake.modules.nixos.nix-dev
+      config.flake.modules.nixos.tracing
     ];
     homeManager = config.flake.profiles.dev-base.homeManager ++ [
       config.flake.modules.homeManager.python
