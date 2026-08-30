@@ -2,6 +2,7 @@
 _: {
   flake.modules.homeManager.nixvim =
     {
+      pkgs,
       ...
     }:
     {
@@ -17,6 +18,12 @@ _: {
           clipboard = "unnamedplus";
           mouse = "a";
         };
+        # GCC lets nvim compile treesitter grammars and other plugins at runtime.
+        extraPackages = [ pkgs.gcc ];
+        # Treesitter via nixvim's native plugin module. `grammarPackages` defaults
+        # to `plugins.treesitter.package.allGrammars`, matching the old
+        # `nvim-treesitter.withAllGrammars`.
+        plugins.treesitter.enable = true;
       };
     };
 }
