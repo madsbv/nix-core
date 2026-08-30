@@ -106,16 +106,19 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ### P3 — Shell & terminal
 
-- [ ] Shell: port the dropped pieces — zsh plugins (vi-mode, autocomplete, autosuggestion), the custom
+- [x] Shell: port the dropped pieces — zsh plugins (vi-mode, autocomplete, autosuggestion), the custom
       aliases (`gj j ls l less cat grep psgrep wget f fj`), `yazi` + `zellij` + `nix-index`, `bat` theme +
       `bat-extras`, sessionVariables (`LESSHISTFILE`, `WGETRC`, `ZDOTDIR`, `ZSH_CACHE`), zsh options
       (`autocd`, `dotDir`, `history.*`), and the global `gitignore_global` + git settings
-      (`credential.helper`, `rebase.autoStash`, `core.editor`).
-- [ ] Add a starship config roughly replicating the old powerlevel10k prompt.
-- [ ] Terminal: fully remove kitty (and wezterm), keep alacritty only, port the base16 color scheme, and
-      ensure the old Nerd Font is available.
-- [ ] Neovim: set `vimdiffAlias`, add `gcc` to extraPackages, and add the treesitter grammars (the old
-      minimal `nvim-config` is a deliberate drop — see Deliberate omissions).
+      (`credential.helper`, `rebase.autoStash`, `core.editor`). Aliases are consolidated in
+      `programs.zsh.shellAliases` (`.zshrc`), which also fixes the old nix-darwin/zellij `.zprofile` issue.
+- [x] Add a starship config roughly replicating the old powerlevel10k prompt (two-line layout: dir + git +
+      right-aligned status/duration/jobs/languages, then the prompt char).
+- [x] Terminal: fully remove kitty (and wezterm), keep alacritty only, port the base16 color scheme (from
+      `config.scheme.withHashtag`), and use the old Nerd Font (`MesloLGS NF`, already in the fonts feature).
+- [x] Neovim: enable treesitter via nixvim's native `plugins.treesitter` (all grammars by default), add
+      `gcc` via `extraPackages`, and provide `vimdiff` as a shell alias (`nvim -d`) since nixvim has no
+      native `vimdiffAlias` option.
 
 ### P4 — Dev & editor parity
 
