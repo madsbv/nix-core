@@ -11,6 +11,7 @@ _: {
     {
       programs.git = {
         enable = true;
+        ignores = [ (builtins.readFile ./gitignore_global) ];
         settings = {
           user = {
             name = fullName;
@@ -19,8 +20,11 @@ _: {
             inherit email;
           };
           init.defaultBranch = "main";
+          credential.helper = "store";
           pull.rebase = true;
           push.autoSetupRemote = true;
+          rebase.autoStash = true;
+          core.editor = "vim";
         };
       };
     };
