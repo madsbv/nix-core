@@ -4,14 +4,26 @@ _: {
     nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
   };
 
+  flake.modules.darwin.rust = _: {
+    nixpkgs.overlays = [ inputs.rust-overlay.overlays.default ];
+  };
+
   flake.modules.homeManager.rust =
     {
       config,
+      lib,
       pkgs,
       ...
     }:
     {
       config = {
+        # Standalone Home Manager (the work laptop) owns its own nixpkgs, so the
+        # rust-overlay must be applied here too; integrated hosts get it from the
+        # OS-level `nixos.rust` / `darwin.rust` modules via `useGlobalPkgs`.
+        nixpkgs.overlays = lib.mkIf (!config.submoduleSupport.enable) [
+          inputs.rust-overlay.overlays.default
+        ];
+
         programs.bacon = {
           enable = true;
           settings = {

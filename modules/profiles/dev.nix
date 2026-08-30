@@ -21,6 +21,7 @@
     ];
     darwin = [
       config.flake.modules.darwin.docker
+      config.flake.modules.darwin.rust
     ];
   };
 }
