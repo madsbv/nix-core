@@ -8,6 +8,7 @@ _: {
       config = {
         services.yubikey-agent.enable = true;
         environment.systemPackages = with pkgs; [
+          libfido2
           yubikey-manager
           yubioath-flutter
         ];
@@ -23,6 +24,7 @@ _: {
       config = {
         services.yubikey-agent.enable = true;
         environment.systemPackages = with pkgs; [
+          libfido2
           yubikey-manager
           yubioath-flutter
         ];
