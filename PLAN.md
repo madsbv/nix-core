@@ -93,14 +93,16 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ### P2 — System packages & tooling
 
-- [ ] Restore the system-wide package list (bash-completion, btop, htop, iftop, ripgrep, jq, yq, yazi,
-      zellij, nix-tree, nix-melt, rage, libfido2, parallel-full, watchexec, gdu, lsof, sqlite, curlFull,
-      wget, zip, zstd, unrar, unzip, …). Placement is an open design choice: a single system-packages
-      module vs. folding packages into the relevant features.
-- [ ] Analyze which terminfo packages are actually still needed (kitty/wezterm/ghostty may be droppable now
-      that kitty is removed).
-- [ ] Add tracing (`programs.bcc`, `programs.sysdig`, `strace`, `perf`) as a dev module (new or existing).
-- [ ] Add `libvirtd` (qemu `swtpm`, `virtiofsd`) to the virtualization feature. Do **not** add podman.
+- [x] Restore the system-wide package list, distributed to the features that own them: the general
+      utilities live in a new `features/system/cli-tools.nix` (base profile, all three classes —
+      `environment.systemPackages` on NixOS/darwin + `home.packages` for HM-only), `nix-tree`/`nix-melt`
+      in `features/dev/nix.nix` (also system-wide on NixOS), `libfido2` in `features/yubikey.nix`, and
+      `yazi`/`zellij`/`nix-index` in the shell feature (P3).
+- [x] Analyze terminfo packages: none are still needed — alacritty ships its own terminfo and
+      kitty/wezterm/ghostty are gone. No terminfo package is installed.
+- [x] Add tracing (`programs.bcc`, `programs.sysdig`, `strace`, `perf`) as a new `features/dev/tracing.nix`
+      (NixOS only).
+- [x] Add `libvirtd` (qemu `swtpm`, `virtiofsd`) to the virtualization feature. No podman.
 
 ### P3 — Shell & terminal
 
