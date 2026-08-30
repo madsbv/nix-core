@@ -4,6 +4,7 @@
 _: {
   flake.modules.nixos.tracing =
     {
+      lib,
       pkgs,
       ...
     }:
@@ -14,7 +15,7 @@ _: {
       environment.systemPackages = [
         pkgs.strace
         # Low priority so bcc's `trace` takes precedence over perf's.
-        (pkgs.lowPrio pkgs.perf)
+        (lib.lowPrio pkgs.perf)
       ];
     };
 }
