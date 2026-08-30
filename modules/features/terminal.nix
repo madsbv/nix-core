@@ -25,21 +25,62 @@ in
 
   flake.modules.homeManager.terminal =
     {
+      config,
       lib,
+      pkgs,
       ...
     }:
     {
       programs.alacritty = {
         enable = true;
         settings = {
-          window.padding = {
-            x = 4;
-            y = 4;
+          cursor.style = "Block";
+          window = {
+            opacity = 1.0;
+            padding = {
+              x = 24;
+              y = 24;
+            };
           };
           font = {
-            size = lib.mkDefault 12;
-            normal.family = lib.mkDefault "JetBrains Mono";
+            normal = {
+              family = "MesloLGS NF";
+              style = "Regular";
+            };
+            size = lib.mkMerge [
+              (lib.mkIf pkgs.stdenv.hostPlatform.isLinux 10)
+              (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin 14)
+            ];
           };
+          colors =
+            with config.scheme.withHashtag;
+            let
+              default = {
+                black = base00;
+                white = base07;
+                inherit
+                  red
+                  green
+                  yellow
+                  blue
+                  cyan
+                  magenta
+                  ;
+              };
+            in
+            {
+              primary = {
+                background = base00;
+                foreground = base07;
+              };
+              cursor = {
+                text = base02;
+                cursor = base07;
+              };
+              normal = default;
+              bright = default;
+              dim = default;
+            };
         };
       };
       home.sessionVariables.TERMINAL = "alacritty";
