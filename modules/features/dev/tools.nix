@@ -10,6 +10,7 @@ _: {
       hyperfine
       yaml-language-server
       sqls
+      vscode-langservers-extracted
     ];
   };
 }

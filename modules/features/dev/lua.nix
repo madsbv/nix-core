@@ -9,5 +9,6 @@ _: {
       ++ (with pkgs.luajitPackages; [
         luarocks
       ]);
+    home.sessionVariables.LUA_LANGUAGE_SERVER_INSTALL_DIR = "${pkgs.lua-language-server}";
   };
 }

@@ -4,6 +4,7 @@ _: {
       python3
       ruff
       uv
+      ty
     ];
     programs.uv = {
       enable = true;
