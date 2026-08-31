@@ -60,7 +60,7 @@ in Milestone 5.
 
 ## Milestone 5 — Feature-parity restoration
 
-> Status: **in progress** (current focus).
+> Status: **done** (SSH deliberately deferred to a later analysis; see P4).
 
 Goal: close every gap between the old `/etc/nixos/nix` config and the new fleet, per the parity audit.
 Grouped into five sub-steps; each item is one checklist entry.
@@ -122,42 +122,52 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ### P4 — Dev & editor parity
 
-- [ ] Rust: restore the bacon `clippy-fix`/`semver-checks` jobs + keybindings, `cargo-diet`/`cargo-msrv`/
+- [x] Rust: restore the bacon `clippy-fix`/`semver-checks` jobs + keybindings, `cargo-diet`/`cargo-msrv`/
       `cargo-semver-checks`, `~/.cargo/config.toml` (aliases, `build.target-dir`, `incremental`,
       `future-incompat-report`, `net.git-fetch-with-cli`), and the darwin `LIBRARY_PATH` (libiconv) fix.
-- [ ] Restore small package/config drops: `ty` (python), `CGO_ENABLED = "0"` (go), the lua LSP session var
-      (or move it into the `identity.nix`/`identity.el` machinery), `vscode-langservers-extracted` (tools),
+- [x] Restore small package/config drops: `ty` (python), `CGO_ENABLED = "0"` (go), the lua LSP session var
+      (`LUA_LANGUAGE_SERVER_INSTALL_DIR`, kept in the lua feature), `vscode-langservers-extracted` (tools),
       and the RStudio `hunspellDicts = {}` override.
-- [ ] Emacs: verify whether the old build flags (SQLite/WebP/ImageMagick/TreeSitter/NativeComp) are now
-      defaults; port the **actually-used** emacs package + patch set (on darwin: generic emacs + `withPgtk`
-      + the `fix-window-role` / `round-undecorated-frame` / `system-appearance` patches).
-- [ ] SSH: analyze the dropped `openssh` package pin and agenix `IdentityFile` wiring and decide whether to
-      restore them (explicitly needs later analysis).
-- [ ] Email: restore enough context to rebuild a functioning email system, fix the easy parts of the new
-      declarative `accounts.email` config, and document the remaining differences in the plan.
+- [x] Emacs: verified nixpkgs defaults — `withSQLite3`/`withWebP`/`withTreeSitter`/`withNativeCompilation`
+      are now defaults; only `withImageMagick` (still default-off) needs an explicit `override`. On darwin,
+      generic emacs + the `fix-window-role` / `round-undecorated-frame` / `system-appearance` patches (no
+      `withPgtk`, which is Linux-only). `pkgs.emacs` is wrapped via `.pkgs.withPackages`.
+- [x] SSH: **deferred** (operator decision) — the current minimal ssh module stays; the dropped `openssh`
+      package pin and agenix `IdentityFile` wiring are recorded here for later analysis, not restored now.
+- [x] Email: the declarative `accounts.email` config is complete (ProtonMail Bridge + mbsync + mu +
+      imapnotify, ports 1143/1025, `realName` now derived from `mine.user.fullName`). The `mbsyncrc`
+      secret is now unused (declarative `accounts.email.mbsync` replaces it) — see Migration reference.
 
 ### P5 — Personal hosts & secrets
 
-- [ ] Wire the yubikey feature (`services.yubikey-agent` + `yubikey-manager`) into `mbv-workstation` and
-      `mbv-mba`.
-- [ ] `mbv-workstation`: fill in the deploy-rs root `authorizedKeys` (currently an empty `TODO`).
-- [ ] restic: set `mine.restic.exclude` (ollama, libvirt/images, Steam, Downloads, `.cache`), set
-      `persistCache = true`, and verify the healthchecks `.age` file was moved to `secrets/restic/`.
-- [ ] transmission: restore `watch-dir-enabled`, `rpc-bind-address`, `rpc-host-whitelist`.
-- [ ] home-assistant: port the appdaemon `equalize_attributes.toml`.
-- [ ] Persistence: add `/etc/nixos`, `/var/log`, `/var/lib`, and
-      `fileSystems."/nix/persist/home".neededForBoot = true`.
-- [ ] extraGroups: move the `docker` group into the docker feature and `networkmanager` into the networking
-      feature (only `wheel` is currently auto-added); analyze whether the old `home-manager.users.root`
-      sharedModules wiring is still needed.
-- [ ] `mbv-mba`: set dock entries + `mine.darwin.dock.user`; add `trusted-users = ["@admin"]` +
-      `nix.daemonIOLowPriority` (tie into P1); reproduce `knownNetworkServices` + hostname/computerName;
-      wire the svim blacklist via `xdg.configFile`; replace kitty references with alacritty.
-- [ ] Port the common-packages list (pandoc, texliveFull, imagemagick, graphviz, portaudio, multimarkdown,
-      stylelint, texlab, djvulibre, poppler, pdfarranger, languagetool, enchant, bibutils, fontconfig,
-      hunspell, xsel, ffmpeg, and the extra aspell dicts). Placement is an open design choice.
-- [ ] Port the NixOS desktop user packages (signal-desktop, libreoffice-qt, hunspell + dicts, flameshot)
-      into a desktop/user preset or directly into `mbv-workstation`.
+- [x] Wire the yubikey feature (`services.yubikey-agent` + `yubikey-manager`) into `mbv-workstation` and
+      `mbv-mba`. The core darwin yubikey module was fixed in the process: nix-darwin has no
+      `services.yubikey-agent` (the agent runs via Home Manager's `services.yubikey-agent`, launchd), and
+      `yubioath-flutter` is unavailable on Darwin (homebrew `yubico-authenticator` covers it).
+- [x] `mbv-workstation`: fill in the deploy-rs root `authorizedKeys` (the user SSH pubkey).
+- [x] restic: set `mine.restic.exclude` (ollama, libvirt/images, Steam, Downloads; `.cache` is already
+      always excluded) and `persistCache = true` as defaults in the restic feature. The healthchecks `.age`
+      file is confirmed present under `secrets/restic/`.
+- [x] transmission: restore `watch-dir-enabled`, `rpc-bind-address`, `rpc-host-whitelist`.
+- [x] home-assistant: port the appdaemon `equalize_attributes.toml` (the `.py` was already ported).
+- [x] Persistence: add `/etc/nixos`, `/var/log`, `/var/lib` to the core persistence dirs and
+      `fileSystems."/nix/persist/home".neededForBoot = true` to `znix-disk.nix`.
+- [x] extraGroups: the `docker` group is added by the docker feature and `networkmanager` by the networking
+      feature (only `wheel` was auto-added before). **Analysis**: the old `home-manager.users.root`
+      sharedModules wiring is *not* needed — root gets CLI tools via `environment.systemPackages`
+      (cli-tools feature), so no root Home Manager config is required.
+- [x] `mbv-mba`: dock entries + `mine.darwin.dock.user`; `trusted-users = ["@admin"]` +
+      `nix.daemonIOLowPriority` were already covered by P1's synchronized nix-settings module;
+      `computerName`/`hostName`/`localHostName` + `knownNetworkServices`; svim blacklist wired via a new
+      `svim` feature (`xdg.configFile`), with `Kitty` → `Alacritty`.
+- [x] Port the common-packages list, distributed across owning features: new core `documents`
+      (pandoc, multimarkdown, hunspell, enchant, languagetool, fontconfig, `aspellWithDicts` en +
+      en-computers + en-science + da — `de` dropped), `media` (ffmpeg, imagemagick, graphviz), and `latex`
+      (texlab, texliveFull, bibutils) features; `stylelint` → javascript, `xsel` → cli-tools (NixOS + HM,
+      Linux-guarded). `aspell` in the emacs feature uses the same dict set as `documents` so they never
+      diverge.
+- [x] Port the NixOS desktop user packages (signal-desktop, libreoffice-qt, hunspell dicts, flameshot) into
+      `mbv-workstation` directly (via a small Home Manager module).
 
 ---
 
@@ -207,6 +217,9 @@ Features from the old config that are intentionally **not** carried over. Docume
 | Old minimal neovim config | Deliberately dropped; keep `vimdiffAlias` + `gcc` + treesitter grammars only. |
 | podman | Dropped; keep docker + libvirtd. |
 | bitwarden-cli | Dropped (`bitwarden-desktop` / the mac cask remain). |
+| `portaudio` | Dropped (unused; not worth carrying in the new fleet). |
+| `aspellDicts.de` | Dropped (operator decision); keep en / en-computers / en-science / da. |
+| `mbsyncrc` secret | No longer consumed — email uses declarative `accounts.email.mbsync` (secret still declared, rekeyed, but unused). |
 | `extrauser.nix` (gameruser specialisation) | Dropped. |
 | `overclocking.nix` | Dropped (file was empty; amdgpu overdrive + lact + gamemode are already ported). |
 | `permittedInsecurePackages = ["electron-39.8.10"]` | Dropped. |

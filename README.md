@@ -283,8 +283,10 @@ everywhere but is least useful on the Mac.
 
 ### Emacs
 
-nixpkgs' default `emacs30` is already near-optimal — native-comp with full AOT, tree-sitter, and sqlite
-are all on by default, so no rebuild is needed for those. The remaining levers:
+nixpkgs' default `emacs30` is already near-optimal — native-comp with full AOT, tree-sitter, sqlite, and
+WebP are all on by default. `withImageMagick` is still default-off and is now explicitly enabled via an
+`override` in the emacs feature (matching the old `my-emacs` overlay). On Darwin the emacs feature applies
+the old `fix-window-role` / `round-undecorated-frame` / `system-appearance` patches. The remaining levers:
 
 - **`-march=x86-64-v3` (or `native`) on the C core** via `overrideAttrs` (`NIX_CFLAGS_COMPILE`), and on
   the native-compiled `.eln` via `native-comp-driver-options` — the one worthwhile recompile, cheap
