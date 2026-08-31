@@ -177,10 +177,11 @@ Grouped into five sub-steps; each item is one checklist entry.
 > leaves so their workflows actually run, and the (deferred) stub-input pattern.
 
 - [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
-- [~] CI (`nix flake check`) per repo — core workflow is in place; leaf workflows (`personal`, `work`) are
-      now written as thin GitHub Actions wrappers that check out core and run `nix run .#ci` (all CI logic
-      is Nix-contained: `nix flake check` incl. treefmt + namaka, with `CORE_PATH` overriding the core
-      input). They are **pending repo hosting** to actually exercise.
+- [x] CI (`nix flake check`) per repo — hosted on GitHub (`madsbv/nix-core`, `madsbv/nix-personal`,
+      `madsbv/nix-work`). Leaf workflows are thin GitHub Actions wrappers that run `nix run .#ci` (all CI
+      logic is Nix-contained: `nix flake check` incl. treefmt + namaka). The leaf `core` input is a
+      `github:` ref, so no core checkout/override is needed in CI. `work` is additionally mirrored to
+      GitLab (`.gitlab-ci.yml`).
 - [x] Namaka snapshot tests across core + personal + work for representative modules and host configs.
       Core snapshots the `mine.*` identity framework; leaves snapshot the deterministic toplevel
       `drvPath` (`mbv-workstation`, `work`; `mbv-mba` is gated on `secrets/rekeyed/mbv-mba` being committed

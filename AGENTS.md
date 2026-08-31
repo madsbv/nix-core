@@ -26,11 +26,17 @@ Each repo is its own git repository — run `git` / `nix` / `just` from inside t
 
 ## Commit ordering across the fleet
 
-`personal` and `work` are leaves; their only upstream input is `core`, pinned as a **path** input with an absolute path (`path:.../core` in each leaf `flake.nix`). Moving the workspace breaks both leaves.
+`personal` and `work` are leaves; their only upstream input is `core`, pinned as a **`github:` input** (`github:madsbv/nix-core` in each leaf `flake.nix`).
 
-- **Commit `core` first** — leaves lock core by narHash derived from core's git state.
+- **Commit and push `core` first** — leaves lock core by git rev from GitHub.
 - Then in each leaf run `nix flake update core`, verify it still builds (`nix flake check`, host builds), and commit.
 - Dev-loop against uncommitted core changes: `--override-input core path:../core`.
+
+## Pushing & session workflow
+
+- **Never push to `origin` unless explicitly instructed.** Commit locally and ask before pushing.
+- During a session, test against uncommitted core changes with `--override-input core path:../core` rather than relocking.
+- At the end of an implementation session, ask whether to push `core`, then relock (`nix flake update core`) and push the leaves.
 
 ## Porting from /etc/nixos/nix
 
