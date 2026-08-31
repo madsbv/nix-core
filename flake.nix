@@ -50,6 +50,9 @@
     nix-auth.url = "github:numtide/nix-auth";
     nix-auth.inputs.nixpkgs.follows = "nixpkgs";
 
+    namaka.url = "github:nix-community/namaka";
+    namaka.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
 
     homebrew-core.url = "github:Homebrew/homebrew-core";
@@ -80,6 +83,7 @@
 
       imports = [
         (import ./modules/flake-module.nix { inherit inputs; })
+        ./modules/namaka.nix
         {
           flake.flakeModules.default = import ./modules/flake-module.nix { inherit inputs; };
         }
