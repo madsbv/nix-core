@@ -316,7 +316,6 @@ Full descriptions are in PLAN.md's "Deferred reimplementation" section.
 
 - **Remote builders** — Tailscale-based remote Nix builders (`nix.buildMachines`); redesign before porting.
 - **Ephemeral installer / ISO** — nixos-generators + disko + impermanence bootstrapping installer.
-- **File manager** — spacefm (or an alternative); re-check the gcc14 patch.
 - **Full neovim config** — re-port the separate `madsbv/nvim-config` repo into nixvim.
 
 See [PLAN.md](./PLAN.md) for the detailed implementation plan and the list of deliberate omissions.

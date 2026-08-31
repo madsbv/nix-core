@@ -227,6 +227,8 @@ Features from the old config that are intentionally **not** carried over. Docume
 | karabiner-elements custom derivation | Replaced by nix-darwin `services.karabiner-elements`. |
 | Remote-builder feature | Dropped as-is (see Deferred reimplementation). |
 | Inactive overlays (`spacefm`, `cargo-instruments`, `dbdcsv`) | Never wired in the old config; dropped. |
+| spacefm (file manager) | Removed from nixpkgs 2026-01-24 (unmaintained upstream); the gcc14 patch is moot. Replaced by `thunar` (already in the `desktop` profile). |
+| `feather-font` (Feather Icons icon font) | Installed-but-unused in the old desktop fonts preset; nerd-fonts + font-awesome + all-the-icons already cover icon fonts. |
 
 ## Deferred reimplementation
 
@@ -239,9 +241,6 @@ cleanly.
 - **Ephemeral installer / ISO** (old `hosts/ephemeral` + `nixos-generators`): a bootstrapping installer
   built with disko + impermanence, a `zpool` bootstrap + `nixos-install --flake` script, `persist.nix`, and
   a Tailscale auth file. Recreate a cleaner version later on top of core's disko/impermanence wiring.
-- **File manager**: the old spacefm overlay (with a gcc14 patch) was never actually installed. Decide
-  between resurrecting spacefm or an alternative (thunar/pcmanfm/…; `yazi` already covers the CLI case),
-  and re-check whether the gcc14 patch is still required.
 - **Full neovim config**: the old setup pulled its real config from a separate `madsbv/nvim-config` repo
   (Supermaven + treesitter + Lua keymaps). Re-port it properly into nixvim later.
 
