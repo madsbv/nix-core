@@ -173,12 +173,19 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ## Milestone 6 — Hardening, CI, polish
 
-> Status: **not started** (follows parity so tests lock in the final state).
+> Status: **in progress** — snapshot tests and leaf CI are written and green; what remains is hosting the
+> leaves so their workflows actually run, and the (deferred) stub-input pattern.
 
 - [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
-- [~] CI (`nix flake check`) per repo — core workflow is in place; leaf CI is pending repo hosting (leaf
-      workflows must check out core and run `--override-input core path:<checkout>`).
-- [ ] Namaka snapshot tests across core + personal + work for representative modules and host configs.
+- [~] CI (`nix flake check`) per repo — core workflow is in place; leaf workflows (`personal`, `work`) are
+      now written as thin GitHub Actions wrappers that check out core and run `nix run .#ci` (all CI logic
+      is Nix-contained: `nix flake check` incl. treefmt + namaka, with `CORE_PATH` overriding the core
+      input). They are **pending repo hosting** to actually exercise.
+- [x] Namaka snapshot tests across core + personal + work for representative modules and host configs.
+      Core snapshots the `mine.*` identity framework; leaves snapshot the deterministic toplevel
+      `drvPath` (`mbv-workstation`, `work`; `mbv-mba` is gated on `secrets/rekeyed/mbv-mba` being committed
+      — see Milestone 7). Tests are pure evaluation, so they run byte-identically on every machine
+      (no `builtins.currentSystem` leakage; the builders pin `system` explicitly).
 - [~] Stub-input pattern in core so public CI never requires private inputs — deferred (all current core
       inputs are public); revisit when a private input is added.
 - [x] Document `--override-input core path:../core` in each leaf README.
@@ -190,7 +197,10 @@ Grouped into five sub-steps; each item is one checklist entry.
 > Status: **not started** (requires the Mac, the physical servers, and the work laptop).
 
 - [ ] Deploy/switch `mbv-mba` on real hardware (rekey + `darwin-rebuild switch --flake .#mbv-mba` or
-      deploy-rs) and verify a core feature behaves identically on the Mac and on NixOS.
+      deploy-rs) and verify a core feature behaves identically on the Mac and on NixOS. **Prerequisite**:
+      `secrets/rekeyed/mbv-mba/` (and `secrets/rekeyed/mbv-desktop/`) are not yet committed, so those two
+      host configs don't evaluate from a clean checkout — rekey them with the YubiKey and commit the
+      outputs (this also activates the gated `mbv-mba` snapshot test).
 - [ ] Server bootstrap: `nixos-anywhere` + disko from a fresh state on the physical servers, then rekey for
       the real host keys.
 - [ ] **Work repo completion**:
