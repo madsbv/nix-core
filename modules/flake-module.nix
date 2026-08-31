@@ -50,6 +50,8 @@ in
     # devShell uses `config.flake.inputs` (core's re-exported inputs) instead of
     # currying — it needs to work identically in core and in leaves.
     ./devShell.nix
+    # CI entrypoint (`nix run .#ci`), propagated to leaves like treefmt.
+    ./ci.nix
     # treefmt-nix propagates to leaf flakes so `nix fmt` and the treefmt check
     # work identically in all three repos. The flakeModule is imported from
     # core's pinned treefmt-nix input.
