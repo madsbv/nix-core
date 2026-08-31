@@ -5,6 +5,7 @@ _: {
       typescript-language-server
       prettier
       eslint
+      stylelint
     ];
     programs.bun.enable = true;
   };

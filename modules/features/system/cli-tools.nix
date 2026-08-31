@@ -31,14 +31,23 @@ let
 in
 {
   flake.modules.nixos.cli-tools = { pkgs, ... }: {
-    environment.systemPackages = pkgList pkgs;
+    environment.systemPackages = (pkgList pkgs) ++ [
+      # X11 clipboard helper (used by nvim/emacs and general shell plumbing).
+      pkgs.xsel
+    ];
   };
 
   flake.modules.darwin.cli-tools = { pkgs, ... }: {
     environment.systemPackages = pkgList pkgs;
   };
 
-  flake.modules.homeManager.cli-tools = { pkgs, ... }: {
-    home.packages = pkgList pkgs;
+  flake.modules.homeManager.cli-tools = { pkgs, lib, ... }: {
+    home.packages =
+      (pkgList pkgs)
+      ++ lib.optionals pkgs.stdenv.isLinux [
+        # Also present on standalone Home Manager hosts that may run X (the work
+        # laptop). Duplicated intentionally with the NixOS system package.
+        pkgs.xsel
+      ];
   };
 }

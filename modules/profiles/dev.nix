@@ -18,6 +18,7 @@
       config.flake.modules.homeManager.nix-dev
       config.flake.modules.homeManager.fortran
       config.flake.modules.homeManager.R
+      config.flake.modules.homeManager.latex
     ];
     darwin = [
       config.flake.modules.darwin.docker
