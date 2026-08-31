@@ -23,6 +23,10 @@ _: {
           thunar-media-tags-plugin
         ];
       };
+
+      xdg.mime.defaultApplications = {
+        "inode/directory" = "thunar.desktop";
+      };
       programs.xfconf.enable = true;
       programs.dconf.enable = true;
     };
