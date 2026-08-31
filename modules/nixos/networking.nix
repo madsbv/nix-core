@@ -26,6 +26,11 @@
       ];
     };
 
+    # Add the primary user to the `networkmanager` group (created by the
+    # NetworkManager service) so they can manage connections. Previously a
+    # hardcoded extraGroup in the host identity.
+    mine.users.${config.mine.primaryUser}.extraGroups = [ "networkmanager" ];
+
     systemd = {
       network.wait-online.enable = false;
       services = {
