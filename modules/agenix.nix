@@ -5,6 +5,7 @@ let
     {
       imports,
       self,
+      homeManager ? false,
     }:
     {
       config,
@@ -12,6 +13,19 @@ let
       pkgs,
       ...
     }:
+    let
+      # Per-host directory key for the rekeyed/generated secret stores.
+      # System-level (NixOS / nix-darwin) secrets key on the hostname; Home
+      # Manager-level secrets key on hostname + username. Without the username
+      # suffix the integrated HM eval — which agenix-rekey auto-discovers as its
+      # own node sharing the hostname — clobbers the system-level secrets that
+      # target the same directory.
+      dirName =
+        if homeManager then
+          "${config.mine.hostName}-user-${config.home.username}"
+        else
+          config.mine.hostName;
+    in
     {
       inherit imports;
 
@@ -31,14 +45,14 @@ let
               if config.mine.agenix.localStorageDir != null then
                 config.mine.agenix.localStorageDir
               else
-                self + "/secrets/rekeyed/${config.mine.hostName}";
+                self + "/secrets/rekeyed/${dirName}";
             secretsDir =
               if config.mine.agenix.secretsDir != null then config.mine.agenix.secretsDir else self + "/secrets";
             generatedSecretsDir =
               if config.mine.agenix.generatedSecretsDir != null then
                 config.mine.agenix.generatedSecretsDir
               else
-                self + "/secrets/generated";
+                self + "/secrets/generated/${dirName}";
             agePlugins = [ pkgs.age-plugin-yubikey ];
           };
         })
@@ -65,6 +79,7 @@ in
         inputs.agenix-rekey.homeManagerModules.default
       ];
       inherit self;
+      homeManager = true;
     };
 
     darwin.agenix = mkAgenixModule {
