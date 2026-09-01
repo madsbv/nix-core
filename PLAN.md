@@ -199,9 +199,9 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 - [ ] Deploy/switch `mbv-mba` on real hardware (rekey + `darwin-rebuild switch --flake .#mbv-mba` or
       deploy-rs) and verify a core feature behaves identically on the Mac and on NixOS. **Prerequisite**:
-      `secrets/rekeyed/mbv-mba/` (and `secrets/rekeyed/mbv-desktop/`) are not yet committed, so those two
-      host configs don't evaluate from a clean checkout — rekey them with the YubiKey and commit the
-      outputs (this also activates the gated `mbv-mba` snapshot test).
+      `secrets/rekeyed/mbv-mba/` is not yet committed, so that host config doesn't evaluate from a clean
+      checkout — rekey with the YubiKey and commit the outputs (this also activates the gated `mbv-mba`
+      snapshot test). (`mbv-desktop` declares no secrets, so it needs no rekey.)
 - [ ] Server bootstrap: `nixos-anywhere` + disko from a fresh state on the physical servers, then rekey for
       the real host keys.
 - [ ] **Work repo completion**:
