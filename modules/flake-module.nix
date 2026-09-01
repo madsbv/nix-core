@@ -47,6 +47,7 @@ in
     (import ./features/dev/_rust.nix { inherit inputs; })
     (import ./features/system/_hosts.nix { inherit inputs; })
     (import ./features/system/_nox.nix { inherit inputs; })
+    (import ./features/darwin/_linux-builder.nix { inherit inputs; })
     # devShell uses `config.flake.inputs` (core's re-exported inputs) instead of
     # currying — it needs to work identically in core and in leaves.
     ./devShell.nix

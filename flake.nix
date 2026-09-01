@@ -50,6 +50,8 @@
     nix-auth.url = "github:numtide/nix-auth";
     nix-auth.inputs.nixpkgs.follows = "nixpkgs";
 
+    multiverse.url = "github:fzakaria/nixpkgs-multiverse";
+
     namaka.url = "github:nix-community/namaka";
     namaka.inputs.nixpkgs.follows = "nixpkgs";
 
