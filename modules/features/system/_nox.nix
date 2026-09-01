@@ -8,6 +8,6 @@
   flake.modules.homeManager.nox =
     { pkgs, ... }:
     {
-      home.packages = [ inputs.nox.packages.${pkgs.system}.default ];
+      home.packages = [ inputs.nox.packages.${pkgs.stdenv.hostPlatform.system}.default ];
     };
 }

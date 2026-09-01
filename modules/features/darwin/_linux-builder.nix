@@ -23,7 +23,7 @@
       ...
     }:
     let
-      multiverse = inputs.multiverse.multiverse.${pkgs.system};
+      multiverse = inputs.multiverse.multiverse.${pkgs.stdenv.hostPlatform.system};
     in
     {
       options.mine.darwin.linuxBuilder = {
