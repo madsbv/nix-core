@@ -41,9 +41,11 @@
         config.flake.modules.homeManager.nh
         config.flake.modules.homeManager.nox
         # Prefer XDG dirs on every host type (Home Manager still defaults this
-        # to `false`; leaves may override).
+        # to `false`; leaves may override), and enable the HM XDG module
+        # (base dirs, cache/data/config env vars).
         ({ lib, ... }: {
           home.preferXdgDirectories = lib.mkDefault true;
+          xdg.enable = lib.mkDefault true;
         })
       ];
     };
