@@ -12,6 +12,7 @@ _: {
     {
       apps.ci = {
         type = "app";
+        meta.description = "Run the fleet CI checks (`nix flake check`).";
         program = lib.getExe (
           pkgs.writeShellApplication {
             name = "ci";

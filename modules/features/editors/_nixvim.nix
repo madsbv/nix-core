@@ -8,6 +8,10 @@ _: {
     {
       imports = [ inputs.nixvim.homeModules.nixvim ];
       programs.nixvim = {
+        # Explicitly pin nixvim's nixpkgs to core's nixpkgs (which `nixvim.inputs
+        # .nixpkgs.follows` already aliases), so the "affected by `follows`"
+        # warning is suppressed without introducing a second nixpkgs.
+        nixpkgs.source = inputs.nixpkgs;
         enable = true;
         opts = {
           number = true;
