@@ -49,6 +49,9 @@ in
         shell = if user.shell != null then user.shell else pkgs.zsh;
         uid = if user.uid != null then user.uid else 501 + index;
         description = user.fullName;
+        # Supported via the `programs/ssh.nix` extension of the user submodule
+        # (renders `/etc/ssh/nix_authorized_keys.d/<user>` + an sshd config).
+        openssh.authorizedKeys.keys = user.sshAuthorizedKeys;
       }
     ) indexedUsers
   );
