@@ -1,31 +1,8 @@
 # nix-core — shared core flake.
 
-default:
-    @just --list
-
-fmt:
-    treefmt
-
-check: fmt
-    nix flake check
-
-update:
-    nix flake update
-
-# --- Doom Emacs store-built DOOMDIR ---
-
+# The leaf flake to operate on (workstations have personal, the work laptop
+# has work).
 leaf := `[ -d ../personal ] && echo ../personal || echo ../work`
-host := `hostname`
+doom_flake := leaf
 
-# Build the store DOOMDIR to a test link only (no relink, no doom sync).
-doomdir-build:
-    nix build --out-link /tmp/doomdir-test --print-out-paths "{{leaf}}#doomdirs.{{host}}"
-
-# Rebuild the store DOOMDIR, relink ~/.config/doom, then doom sync.
-doomdir:
-    #!/usr/bin/env sh
-    set -eu
-    out=$(nix build --print-out-paths "{{leaf}}#doomdirs.{{host}}")
-    if [ -e "$HOME/.config/doom" ] && [ ! -L "$HOME/.config/doom" ]; then echo "error: $HOME/.config/doom exists and is not a symlink" >&2; exit 1; fi
-    ln -sfn "$out" "$HOME/.config/doom"
-    "$HOME/.config/emacs/bin/doom" sync --aot -j 16
+import 'just/common.just'
