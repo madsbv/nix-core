@@ -240,6 +240,19 @@ in
         type = lib.types.str;
         description = "Resolved stateVersion (read-only; derived from `mine.system.stateVersion`).";
       };
+      # Home Manager has its own `home.stateVersion`, historically tracked
+      # independently of NixOS `system.stateVersion` (the old config pinned HM to
+      # "23.11" while NixOS hosts were on "24.05"). Keep the two separable so
+      # per-host values stay faithful to the old config.
+      homeStateVersion = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Per-host Home Manager stateVersion override (set in the host's identity). When unset, `mine.system.stateVersion` is used.";
+      };
+      stateVersionHomeFinal = lib.mkOption {
+        type = lib.types.str;
+        description = "Resolved Home Manager stateVersion (read-only; `homeStateVersion` if set, else `stateVersionFinal`).";
+      };
     };
 
     # Nix configuration, synchronized across NixOS / nix-darwin / Home Manager
@@ -362,6 +375,14 @@ in
           defaultStateVersion
         else
           config.mine.system.stateVersion
+      );
+    }
+    {
+      mine.system.stateVersionHomeFinal = lib.mkDefault (
+        if config.mine.system.homeStateVersion == null then
+          config.mine.system.stateVersionFinal
+        else
+          config.mine.system.homeStateVersion
       );
     }
     (lib.mkIf (config ? warnings && config.mine.system.stateVersion == null) {

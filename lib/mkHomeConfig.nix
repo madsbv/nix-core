@@ -36,7 +36,7 @@ in
               inherit username homeDirectory;
               # Resolved from `mine.system.stateVersion` (core default unless the
               # leaf overrides); leaves may still set `home.stateVersion` directly.
-              stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
+              stateVersion = lib.mkDefault config.mine.system.stateVersionHomeFinal;
             };
           }
         )
