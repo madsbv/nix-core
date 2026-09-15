@@ -26,27 +26,36 @@
 let
   # Walks the system-side `mine` tree against the HM evaluation's option tree,
   # keeping only values whose option the HM eval actually declares. Plain option
-  # groups (attrsets of options) are recursed into; individual options and
-  # submodule options (which carry `_type = "option"` on the group itself) are
-  # treated as leaves and copied whole — submodule values like `mine.users` /
-  # `mine.user` don't nest their sub-options under the option object, so
-  # recursing into them would drop everything.
+  # groups (attrsets of options) are recursed into and REPLACED with their
+  # pruned content (a mere non-emptiness test would keep undeclared leaves like
+  # `mine.network.tailscale` whenever a sibling such as `mine.network.dns` is
+  # declared); individual options and submodule options (which carry
+  # `_type = "option"` on the group itself) are treated as leaves and copied
+  # whole — submodule values like `mine.users` / `mine.user` don't nest their
+  # sub-options under the option object, so recursing into them would drop
+  # everything.
   prune =
     mineTree: optTree:
-    lib.filterAttrs (
-      name: value:
-      let
-        child = optTree.${name} or null;
-      in
-      if child == null then
-        false
-      else if child ? _type && child._type == "option" then
-        true
-      else if lib.isAttrs value && lib.isAttrs child then
-        prune value child != { }
-      else
-        true
-    ) mineTree;
+    lib.listToAttrs (
+      lib.concatMap (
+        name:
+        let
+          value = mineTree.${name};
+          child = optTree.${name} or null;
+        in
+        if child == null then
+          [ ]
+        else if child ? _type && child._type == "option" then
+          [ (lib.nameValuePair name value) ]
+        else if lib.isAttrs value && lib.isAttrs child then
+          let
+            sub = prune value child;
+          in
+          if sub == { } then [ ] else [ (lib.nameValuePair name sub) ]
+        else
+          [ (lib.nameValuePair name value) ]
+      ) (builtins.attrNames mineTree)
+    );
 in
 {
   mine = prune osMine (options.mine or { });
