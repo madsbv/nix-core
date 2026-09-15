@@ -76,7 +76,7 @@ in
       # Same option surface as NixOS so the pruning HM mirror sees a consistent
       # shape; only `enable` is applied on darwin.
       options.mine.network.tailscale = tailscaleOptions { inherit lib; };
-      services.tailscale.enable = lib.mkDefault true;
+      config.services.tailscale.enable = lib.mkDefault true;
     };
 
   flake.modules.homeManager.tailscale =
