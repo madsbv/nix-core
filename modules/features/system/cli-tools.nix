@@ -10,16 +10,23 @@ let
     pkgs: with pkgs; [
       bash-completion
       btop
+      coreutils-full
       curlFull
+      fzf
       gdu
       htop
       iftop
+      inetutils
       jq
+      just
+      killall
       lsof
       parallel-full
       rage
       ripgrep
+      sd
       sqlite
+      tree
       unrar
       unzip
       watchexec
