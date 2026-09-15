@@ -168,6 +168,7 @@ in
     };
 
     prefetch = {
+      enable = lib.mkEnableOption "the nix-prefetch timer (flake update + build)";
       flake = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
