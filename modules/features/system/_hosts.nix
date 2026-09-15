@@ -13,7 +13,12 @@
 {
   flake.modules.nixos.hosts = {
     imports = [ inputs.hosts.nixosModule ];
-    networking.stevenBlackHosts.enable = true;
+    networking.stevenBlackHosts = {
+      enable = true;
+      enableIPv6 = true;
+      blockFakenews = true;
+      blockGambling = true;
+    };
   };
 
   flake.modules.darwin.hosts = {
