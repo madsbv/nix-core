@@ -54,6 +54,7 @@ _: {
           // config.mine.darwin.brew.taps;
         };
         homebrew = {
+          enable = true;
           inherit (config.mine.darwin.brew)
             brews
             casks
