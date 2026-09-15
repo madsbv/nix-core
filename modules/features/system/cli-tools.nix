@@ -12,6 +12,7 @@ let
       btop
       coreutils-full
       curlFull
+      dix
       fzf
       gdu
       htop
@@ -21,6 +22,7 @@ let
       just
       killall
       lsof
+      nix-output-monitor
       parallel-full
       rage
       ripgrep

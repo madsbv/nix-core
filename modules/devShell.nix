@@ -16,6 +16,8 @@
           just
           age
           age-plugin-yubikey
+          dix
+          nix-output-monitor
           nixfmt
           statix
           deadnix
