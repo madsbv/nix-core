@@ -20,6 +20,7 @@
         ./options.nix
         config.flake.modules.nixos.agenix
         config.flake.modules.nixos.nix-settings
+        config.flake.modules.nixos.nh
         config.flake.modules.nixos.hosts
         config.flake.modules.nixos.tailscale
         ./system/users.nix
@@ -37,6 +38,7 @@
         ./options.nix
         config.flake.modules.homeManager.agenix
         config.flake.modules.homeManager.nix-settings
+        config.flake.modules.homeManager.nh
         config.flake.modules.homeManager.nox
         # Prefer XDG dirs on every host type (Home Manager still defaults this
         # to `false`; leaves may override).
@@ -51,6 +53,7 @@
         ./options.nix
         config.flake.modules.darwin.agenix
         config.flake.modules.darwin.nix-settings
+        config.flake.modules.darwin.nh
         config.flake.modules.darwin.hosts
         config.flake.modules.darwin.tailscale
         config.flake.modules.darwin.homebrew

@@ -275,12 +275,40 @@ in
         enable = lib.mkOption {
           type = lib.types.bool;
           default = true;
-          description = "Whether to periodically garbage-collect the Nix store (NixOS / nix-darwin).";
+          description = "Whether to periodically garbage-collect the Nix store (NixOS / nix-darwin). Ignored while `clean.enable` is on (nh clean owns GC then).";
         };
         options = lib.mkOption {
           type = lib.types.str;
           default = "--delete-older-than 30d";
           description = "Arguments passed to `nix-collect-garbage`.";
+        };
+      };
+      # Periodic garbage collection via `nh clean` (see `modules/features/system/nh.nix`).
+      # While enabled, it replaces the NixOS `nix.gc` / nix-darwin `nix.gc` timers.
+      clean = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Whether to periodically garbage-collect via `nh clean` (all profiles on integrated hosts, the user profile on standalone Home Manager).";
+        };
+        dates = lib.mkOption {
+          type = lib.types.singleLineStr;
+          default = "weekly";
+          description = "How often cleanup runs (systemd calendar on Linux).";
+        };
+        extraArgs = lib.mkOption {
+          type = lib.types.singleLineStr;
+          default = "--keep-since 4d --keep 3";
+          description = "Extra arguments passed to `nh clean`.";
+        };
+        startCalendarInterval = lib.mkOption {
+          type = lib.types.attrsOf lib.types.int;
+          default = {
+            Weekday = 0;
+            Hour = 2;
+            Minute = 0;
+          };
+          description = "launchd StartCalendarInterval for the nh clean service (nix-darwin).";
         };
       };
       optimise = {
