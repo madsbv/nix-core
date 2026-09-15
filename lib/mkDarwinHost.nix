@@ -4,6 +4,11 @@
 # Curried over core's pinned `inputs` and nixpkgs `lib`, then becomes a
 # flake-parts module that registers `mkDarwinHost` on `config.flake.lib`
 # (auto-discovered from `lib/` by the framework).
+#
+# The primary user's Home Manager modules are threaded to `users-darwin.nix` via
+# `mine.users.<primary>.homeManagerModules`, mirroring how `mkNixosHost` feeds
+# `users.nix`; the account/primaryUser/`useGlobalPkgs` wiring itself lives in
+# `users-darwin.nix`.
 { inputs, lib }:
 { config, ... }:
 let
@@ -20,20 +25,7 @@ in
       identity ? [ ],
     }:
     let
-      toClassKeyed =
-        value:
-        if builtins.isList value then
-          {
-            darwin = value;
-            homeManager = [ ];
-          }
-        else if value ? darwin then
-          value
-        else
-          {
-            darwin = [ value ];
-            homeManager = [ ];
-          };
+      toClassKeyed = import ./_class-keyed.nix "darwin";
 
       profiles' = map toClassKeyed profiles;
       modules' = toClassKeyed modules;
@@ -43,28 +35,13 @@ in
       modulesDarwin = modules'.darwin;
       modulesHm = modules'.homeManager;
 
-      userWiring =
+      # The primary user's Home Manager config is threaded through
+      # `mine.users.<primary>.homeManagerModules`, consumed by `users-darwin.nix`
+      # (which adds the `mine` mirror and `home.stateVersion`).
+      primaryUserHm =
         { config, lib, ... }:
-        let
-          user = config.mine.user.username;
-        in
         {
-          system.primaryUser = user;
-          home-manager = {
-            useGlobalPkgs = true;
-            useUserPackages = true;
-            users.${user}.imports = [
-              # Mirror the system evaluation's `mine.*` values into the nested
-              # Home Manager evaluation, pruning to the options that evaluation
-              # actually declares (see modules/_hm-mirror.nix).
-              (import ../modules/_hm-mirror.nix { osMine = config.mine; })
-              {
-                home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
-              }
-            ]
-            ++ profilesHm
-            ++ modulesHm;
-          };
+          mine.users.${config.mine.primaryUser}.homeManagerModules = lib.mkDefault (profilesHm ++ modulesHm);
         };
     in
     inputs.nix-darwin.lib.darwinSystem {
@@ -74,7 +51,7 @@ in
           networking.hostName = lib.mkDefault hostname;
         }
         homeManagerDarwinModule
-        userWiring
+        primaryUserHm
       ]
       ++ profilesDarwin
       ++ modulesDarwin

@@ -1,6 +1,12 @@
 # User framework for nix-darwin: turns `mine.users` into darwin user accounts
 # and per-user Home Manager configs. No extraGroups/group management (darwin
 # uses `knownUsers`/`knownGroups` or admin group membership via sudo config).
+#
+# The per-user Home Manager configs and SSH identity secrets are shared with the
+# NixOS user module (`users.nix`) via `_user-common.nix`; only the account
+# definition (uid/home/knownUsers) is darwin-specific here. The primary-user +
+# `useGlobalPkgs`/`useUserPackages` wiring also lives here (previously inlined in
+# `lib/mkDarwinHost.nix`).
 {
   config,
   lib,
@@ -9,11 +15,6 @@
 }:
 let
   cfg = config.mine;
-
-  hmUsers = lib.filterAttrs (_: u: !u.isSystemUser && u.homeManagerModules != [ ]) cfg.users;
-
-  ageSecretsDir = cfg.agenix.secretsDir;
-  hostKeyName = cfg.hostName;
 
   # Darwin requires every user to have a UID. Auto-assign from 501 upward
   # when the leaf doesn't specify one.
@@ -24,6 +25,18 @@ let
   }) (builtins.attrNames cfg.users);
 in
 {
+  imports = [ ./_user-common.nix ];
+
+  # `mkDarwinHost` always imports the home-manager darwin module, so these are
+  # set on every darwin host; the guard mirrors the `config ? home-manager`
+  # pattern in `_user-common.nix`.
+  home-manager = lib.mkIf (config ? home-manager) {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+  };
+
+  system.primaryUser = config.mine.primaryUser;
+
   users.users = builtins.listToAttrs (
     map (
       {
@@ -41,26 +54,4 @@ in
   );
 
   users.knownUsers = builtins.attrNames cfg.users;
-
-  home-manager.users = lib.mkIf (config ? home-manager) (
-    lib.mapAttrs (_name: u: {
-      imports = [
-        (import ../_hm-mirror.nix { osMine = config.mine; })
-        {
-          home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
-        }
-      ]
-      ++ u.homeManagerModules;
-    }) hmUsers
-  );
-
-  age.secrets = lib.mkIf (ageSecretsDir != null) (
-    lib.mapAttrs' (
-      _: u:
-      lib.nameValuePair "id.${hostKeyName}.${u.username}" {
-        rekeyFile = "${ageSecretsDir}/ssh/id_ed25519.${hostKeyName}.${u.username}.age";
-        owner = u.username;
-      }
-    ) cfg.users
-  );
 }

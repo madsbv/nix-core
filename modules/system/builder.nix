@@ -17,6 +17,9 @@ let
 in
 {
   config = {
+    # Dedicated group for the remote-builder user (previously inlined in
+    # `modules/base.nix`; kept here with the user it belongs to).
+    users.groups.builders = { };
     users.users.builder = {
       isSystemUser = true;
       group = "builders";

@@ -28,11 +28,6 @@
         ./system/register-flake.nix
         ./system/detect-hostname-change.nix
         (import ./nixos/base.nix { inherit inputs; })
-        # NixOS needs a dedicated `builders` group for the remote-builder user;
-        # darwin manages the linux-builder VM user differently (builder-darwin.nix).
-        (_: {
-          users.groups.builders = { };
-        })
       ];
     };
 

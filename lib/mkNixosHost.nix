@@ -27,22 +27,7 @@ in
       users ? { },
     }:
     let
-      toClassKeyed =
-        value:
-        if builtins.isList value then
-          {
-            nixos = value;
-            homeManager = [ ];
-            darwin = [ ];
-          }
-        else if value ? nixos then
-          value
-        else
-          {
-            nixos = [ value ];
-            homeManager = [ ];
-            darwin = [ ];
-          };
+      toClassKeyed = import ./_class-keyed.nix "nixos";
 
       profiles' = map toClassKeyed profiles;
       modules' = toClassKeyed modules;

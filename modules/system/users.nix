@@ -1,6 +1,6 @@
-# User framework: turns the `mine.users` option into NixOS users, per-user
-# Home Manager configs, and (when agenix is enabled) per-user SSH identity
-# secrets. Replaces the old `systemModules/users` + `nixosModules/users`
+# User framework for NixOS: turns the `mine.users` option into NixOS users,
+# per-user Home Manager configs, and (when agenix is enabled) per-user SSH
+# identity secrets. Replaces the old `systemModules/users` + `nixosModules/users`
 # wiring: identity lives in `mine.*` (leaf-provided), no `flake-root` /
 # `specialArgs` plumbing, no personal values in core.
 #
@@ -8,20 +8,20 @@
 # (`mkNixosHost` feeds `profiles`/`modules` into `mine.users.<primary>`);
 # every other user gets theirs from `mine.users.<name>.homeManagerModules`
 # (leaf-provided, possibly via the builders' `users` parameter).
+#
+# The per-user Home Manager configs and SSH identity secrets are shared with the
+# darwin user module (`users-darwin.nix`) via `_user-common.nix`; only the
+# account definition (groups/extraGroups) is NixOS-specific here.
 { config, lib, ... }:
 let
   cfg = config.mine;
 
-  # Users that get a Home Manager config: non-system users that declare any.
-  hmUsers = lib.filterAttrs (_: u: !u.isSystemUser && u.homeManagerModules != [ ]) cfg.users;
-
   # Human users get `wheel` (for sudo) on top of their declared groups.
   humanGroups = u: u.extraGroups ++ lib.optionals (!u.isSystemUser) [ "wheel" ];
-
-  ageSecretsDir = cfg.agenix.secretsDir;
-  hostKeyName = cfg.hostName;
 in
 {
+  imports = [ ./_user-common.nix ];
+
   users.users = lib.mapAttrs (name: u: {
     inherit (u) isSystemUser;
     isNormalUser = !u.isSystemUser;
@@ -36,34 +36,4 @@ in
   # System users (robots/service accounts) each get a matching group; NixOS
   # no longer defaults ungrouped users to nogroup.
   users.groups = lib.mapAttrs (_name: _: { }) (lib.filterAttrs (_: u: u.isSystemUser) cfg.users);
-
-  # Home Manager, when present (always for builder-built hosts): per-user
-  # config with the system evaluation's `mine` values mirrored into the nested
-  # Home Manager evaluation via `modules/_hm-mirror.nix` (pruned to the options
-  # the HM eval actually declares, so system-only `mine.*` options can't break
-  # HM evals).
-  home-manager.users = lib.mkIf (config ? home-manager) (
-    lib.mapAttrs (_name: u: {
-      imports = [
-        (import ../_hm-mirror.nix { osMine = config.mine; })
-        {
-          home.stateVersion = lib.mkDefault config.mine.system.stateVersionFinal;
-        }
-      ]
-      ++ u.homeManagerModules;
-    }) hmUsers
-  );
-
-  # Per-user SSH identity secrets (agenix-rekey), same layout as the old repo:
-  #   secrets/ssh/id_ed25519.<hostname>.<username>.age
-  # Path derived from the leaf's `mine.agenix.secretsDir`.
-  age.secrets = lib.mkIf (ageSecretsDir != null) (
-    lib.mapAttrs' (
-      _: u:
-      lib.nameValuePair "id.${hostKeyName}.${u.username}" {
-        rekeyFile = "${ageSecretsDir}/ssh/id_ed25519.${hostKeyName}.${u.username}.age";
-        owner = u.username;
-      }
-    ) cfg.users
-  );
 }
