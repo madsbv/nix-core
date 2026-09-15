@@ -47,25 +47,24 @@ in
     {
       options.mine.network.tailscale = tailscaleOptions { inherit lib; };
       config = {
-        services.tailscale =
-          {
-            enable = true;
-            extraUpFlags =
-              [ "--ssh" ]
-              ++ lib.optionals (config.mine.network.tailscale.hostname != null) [
-                "--hostname=${config.mine.network.tailscale.hostname}"
-              ]
-              ++ map (t: "--advertise-tags=${t}") config.mine.network.tailscale.tags
-              ++ map (r: "--advertise-routes=${r}") config.mine.network.tailscale.advertiseRoutes
-              ++ lib.optionals config.mine.network.tailscale.advertiseExitNode [
-                "--advertise-exit-node"
-              ];
-          }
-          // lib.optionalAttrs (config.mine.network.tailscale.authKeyFile != null) {
-            authKeyFile = config.mine.network.tailscale.authKeyFile;
-          };
+        services.tailscale = {
+          enable = true;
+          extraUpFlags = [
+            "--ssh"
+          ]
+          ++ lib.optionals (config.mine.network.tailscale.hostname != null) [
+            "--hostname=${config.mine.network.tailscale.hostname}"
+          ]
+          ++ map (t: "--advertise-tags=${t}") config.mine.network.tailscale.tags
+          ++ map (r: "--advertise-routes=${r}") config.mine.network.tailscale.advertiseRoutes
+          ++ lib.optionals config.mine.network.tailscale.advertiseExitNode [
+            "--advertise-exit-node"
+          ];
+        }
+        // lib.optionalAttrs (config.mine.network.tailscale.authKeyFile != null) {
+          authKeyFile = config.mine.network.tailscale.authKeyFile;
+        };
       };
-    };
     };
 
   flake.modules.darwin.tailscale =
