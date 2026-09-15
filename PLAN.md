@@ -173,22 +173,23 @@ Grouped into five sub-steps; each item is one checklist entry.
 
 ## Milestone 6 — Hardening, CI, polish
 
-> Status: **in progress** — snapshot tests and leaf CI are written and green; what remains is hosting the
-> leaves so their workflows actually run, and the (deferred) stub-input pattern.
+> Status: **done** — snapshot tests and leaf CI are written and green; CI is verified green on all three
+> remotes (2026-09-15, operator-confirmed). The stub-input pattern is explicitly deferred (see below).
 
 - [x] `nixfmt` + statix + deadnix configured (via treefmt) and passing in all three repos.
 - [x] CI (`nix flake check`) per repo — hosted on GitHub (`madsbv/nix-core`, `madsbv/nix-personal`,
       `madsbv/nix-work`). Leaf workflows are thin GitHub Actions wrappers that run `nix run .#ci` (all CI
       logic is Nix-contained: `nix flake check` incl. treefmt + namaka). The leaf `core` input is a
       `github:` ref, so no core checkout/override is needed in CI. `work` is additionally mirrored to
-      GitLab (`.gitlab-ci.yml`).
+      GitLab (`.gitlab-ci.yml`). All three remotes verified green 2026-09-15.
 - [x] Namaka snapshot tests across core + personal + work for representative modules and host configs.
       Core snapshots the `mine.*` identity framework; leaves snapshot the deterministic toplevel
       `drvPath` (`mbv-workstation`, `work`; `mbv-mba` is gated on `secrets/rekeyed/mbv-mba` being committed
       — see Milestone 7). Tests are pure evaluation, so they run byte-identically on every machine
       (no `builtins.currentSystem` leakage; the builders pin `system` explicitly).
-- [~] Stub-input pattern in core so public CI never requires private inputs — deferred (all current core
-      inputs are public); revisit when a private input is added.
+- [ ] Stub-input pattern in core so public CI never requires private inputs — **deferred** (all current
+      core inputs are public and no private input is foreseen); revisit only when a private input is
+      added.
 - [x] Document `--override-input core path:../core` in each leaf README.
 
 ---

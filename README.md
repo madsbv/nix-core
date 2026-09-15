@@ -233,12 +233,15 @@ the builders include by default in both integrated and standalone Home Manager â
 
 ## Work isolation (audit checklist)
 
-- [ ] Work's flake input graph is exactly `{ nixpkgs (â†’ core), core }`. Nothing personal.
-- [ ] The tailscale module is never imported in `work`; work defines its own VPN feature in the work
+- [x] Work's flake input graph is exactly `{ nixpkgs (â†’ core), core }`. Nothing personal.
+- [x] The tailscale module is never imported in `work`; work defines its own VPN feature in the work
       repo.
-- [ ] Git/editor/dev modules in core are value-driven by `mine.*`; work and personal get correct
+- [x] Git/editor/dev modules in core are value-driven by `mine.*`; work and personal get correct
       identities with zero cross-repo data.
-- [ ] Core git history contains no identity, hostnames, or secrets.
+- [x] Core git history contains no identity, hostnames, or secrets.
+
+All four items verified 2026-09-15 (input graph, `rg` / `nix eval` for personal references, and a manual
+tailscale-import check).
 
 ---
 
@@ -249,8 +252,8 @@ the builders include by default in both integrated and standalone Home Manager â
 - **Check**: `nix flake check` in each repo. Core is checkable without any secrets; leaves build the
   already-rekeyed `rekeyed/` outputs, so builds stay pure.
 - **Formatting/linting**: `nixfmt`, `statix`, `deadnix` (via treefmt).
-- **Snapshot tests**: Namaka snapshot tests across core + both leaves are planned (see Milestone 6 in
-  PLAN.md).
+- **Snapshot tests**: Namaka snapshot tests across core + both leaves are implemented and run as part of
+  `nix flake check` (see Milestone 6 in PLAN.md).
 
 ### Known friction
 
