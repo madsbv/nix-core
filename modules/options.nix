@@ -414,6 +414,13 @@ in
           config.mine.system.homeStateVersion
       );
     }
+    # The flake a system was built with is the leaf's own checkout, i.e. the
+    # same path as `mine.flakeRoot`. Defaulting here keeps hosts from having to
+    # repeat it, and wires `nix.registry.self` + `programs.nh.flake` (both gated
+    # on this option) from a single per-host value.
+    {
+      mine.system.registerFlake.flake = lib.mkDefault config.mine.flakeRoot;
+    }
     (lib.mkIf (config ? warnings && config.mine.system.stateVersion == null) {
       warnings = [
         "mine.system.stateVersion is unset on this host; using core's default (${defaultStateVersion}). Set mine.system.stateVersion per host so state-version upgrades are explicit and intentional."
