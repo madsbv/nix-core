@@ -22,7 +22,10 @@
 }:
 let
   cfg = config.mine.system.registerFlake;
-  flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
+  # `inputs` includes `self` (core's own flake); `self` in the registry must
+  # mean the *leaf* the system was built from, which is registered separately
+  # below, so it is excluded here.
+  flakeInputs = lib.filterAttrs (name: v: name != "self" && lib.isType "flake" v) inputs;
 in
 {
   config = lib.mkMerge [
