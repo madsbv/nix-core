@@ -57,6 +57,11 @@ in
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
+              # When Home Manager wants to write a file that already exists and
+              # isn't one of its own symlinks, rename it aside instead of
+              # aborting the activation. Without this the activation script
+              # fails with "Existing file ... would be clobbered".
+              backupFileExtension = "home-manager-backup";
             };
 
             # The base composite (identity options, agenix, base16) is included in
