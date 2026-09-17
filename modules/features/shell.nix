@@ -1,12 +1,42 @@
 # Shell feature: zsh + starship + the CLI companions (fzf/zoxide/eza/bat/yazi/
-# zellij/nix-index). Ported from the old `systemModules/shell` module, with the
-# aliases and prompt consolidated into a single Home Manager zsh module.
+# zellij/nix-index). Ported from the old `systemModules/shell` module.
 #
-# The old config duplicated aliases across NixOS `environment.shellAliases` and
-# HM `home.shellAliases` to work around a nix-darwin/zellij issue where `.zprofile`
-# aliases aren't loaded in non-login shells. Putting everything in
-# `programs.zsh.shellAliases` (which lands in `.zshrc`) sidesteps that entirely.
-_: {
+# The alias set is defined once, below, and consumed by both classes: the user's
+# zsh gets everything (`programs.zsh.shellAliases`, which lands in `.zshrc`),
+# and NixOS additionally exports the portable subset system-wide via
+# `environment.shellAliases` so root and non-Home-Manager shells get them too.
+# Keeping them in `.zshrc` (rather than only in `.zprofile`) is what fixes the
+# old nix-darwin/zellij issue where aliases weren't loaded in non-login shells.
+let
+  # Portable aliases: no XDG paths and no zsh-only integrations, so they are
+  # valid for any user and any shell (bash, root, non-login).
+  commonAliases =
+    { pkgs, flakeRoot }:
+    {
+      gj = "just ${flakeRoot}";
+      j = "just";
+      ls = "${pkgs.eza}/bin/eza --binary --header --git --git-repos --all";
+      l = "ls -alh";
+      less = "${pkgs.less}/bin/less --ignore-case --LINE-NUMBERS";
+      cat = "${pkgs.bat}/bin/bat";
+      grep = "${pkgs.gnugrep}/bin/grep -i --color=always";
+      psgrep = "ps aux | grep -v grep | grep";
+      # nixvim has no native `vimdiffAlias`, so provide the equivalent as an
+      # alias (nvim `-d` is diff mode).
+      vimdiff = "nvim -d";
+    };
+
+  # User-only aliases: an XDG cache path and the zoxide wrappers, which only
+  # make sense inside the user's interactive zsh.
+  userAliases =
+    { pkgs, cacheHome }:
+    {
+      wget = "${pkgs.wget}/bin/wget --hsts-file=${cacheHome}/.wget-hsts";
+      f = "z";
+      fj = "zi";
+    };
+in
+{
   flake.modules.homeManager.shell =
     {
       config,
@@ -28,22 +58,15 @@ _: {
         autocd = false;
         dotDir = "${config.xdg.configHome}/zsh";
         enableVteIntegration = true;
-        shellAliases = {
-          gj = "just ${config.mine.flakeRoot}";
-          j = "just";
-          ls = "${pkgs.eza}/bin/eza --binary --header --git --git-repos --all";
-          l = "ls -alh";
-          less = "${pkgs.less}/bin/less --ignore-case --LINE-NUMBERS";
-          cat = "${pkgs.bat}/bin/bat";
-          grep = "${pkgs.gnugrep}/bin/grep -i --color=always";
-          psgrep = "ps aux | grep -v grep | grep";
-          wget = "${pkgs.wget}/bin/wget --hsts-file=${config.xdg.cacheHome}/.wget-hsts";
-          f = "z";
-          fj = "zi";
-          # nixvim has no native `vimdiffAlias`, so provide the equivalent as an
-          # alias (nvim `-d` is diff mode).
-          vimdiff = "nvim -d";
-        };
+        shellAliases =
+          commonAliases {
+            inherit pkgs;
+            flakeRoot = config.mine.flakeRoot;
+          }
+          // userAliases {
+            inherit pkgs;
+            cacheHome = config.xdg.cacheHome;
+          };
         history = {
           path = "${config.xdg.dataHome}/zsh/zsh_history";
           ignoreAllDups = true;
@@ -124,11 +147,18 @@ _: {
 
   flake.modules.nixos.shell =
     {
+      config,
       lib,
       pkgs,
       ...
     }:
     {
+      # Same aliases for root and for any shell without a Home Manager config.
+      environment.shellAliases = commonAliases {
+        inherit pkgs;
+        flakeRoot = config.mine.flakeRoot;
+      };
+
       programs.zsh = {
         enable = true;
       };
