@@ -27,7 +27,7 @@
         ./system/keys.nix
         ./system/builder.nix
         ./system/update-diff.nix
-        ./system/register-flake.nix
+        (import ./system/register-flake.nix { inherit inputs; })
         ./system/detect-hostname-change.nix
         (import ./nixos/base.nix { inherit inputs; })
       ];
@@ -62,7 +62,7 @@
         ./system/users-darwin.nix
         ./system/builder-darwin.nix
         ./system/update-diff.nix
-        ./system/register-flake.nix
+        (import ./system/register-flake.nix { inherit inputs; })
         (
           { config, lib, ... }:
           {
