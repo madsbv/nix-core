@@ -43,10 +43,13 @@
         # Prefer XDG dirs on every host type (Home Manager still defaults this
         # to `false`; leaves may override), and enable the HM XDG module
         # (base dirs, cache/data/config env vars).
-        ({ lib, ... }: {
-          home.preferXdgDirectories = lib.mkDefault true;
-          xdg.enable = lib.mkDefault true;
-        })
+        (
+          { lib, ... }:
+          {
+            home.preferXdgDirectories = lib.mkDefault true;
+            xdg.enable = lib.mkDefault true;
+          }
+        )
       ];
     };
 
@@ -59,7 +62,9 @@
         config.flake.modules.darwin.hosts
         config.flake.modules.darwin.tailscale
         config.flake.modules.darwin.homebrew
+        config.flake.modules.darwin.fonts
         ./system/users-darwin.nix
+        ./system/keys.nix
         ./system/builder-darwin.nix
         ./system/update-diff.nix
         (import ./system/register-flake.nix { inherit inputs; })

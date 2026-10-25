@@ -3,6 +3,7 @@ _: {
     {
       config,
       lib,
+      osConfig,
       ...
     }:
     {
@@ -21,6 +22,13 @@ _: {
             identitiesOnly = true;
           };
         };
+        # Global IdentityFile pointing at the agenix-deployed per-user SSH key
+        # (`/run/agenix/id.<host>.<user>`), matching the old config's
+        # `extraOptionOverrides.IdentityFile`. Required for `github.com`'s
+        # `identitiesOnly` block and for fleet SSH auth.
+        extraOptionOverrides.IdentityFile = lib.mkIf (
+          config.mine.agenix.secretsDir != null
+        ) osConfig.age.secrets."id.${config.mine.hostName}.${config.mine.user.username}".path;
       };
 
       programs.git.signing = lib.mkIf (config.mine.ssh.signingKey != null) {

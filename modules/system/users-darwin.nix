@@ -33,6 +33,7 @@ in
   home-manager = lib.mkIf (config ? home-manager) {
     useGlobalPkgs = true;
     useUserPackages = true;
+    backupFileExtension = "home-manager-backup";
   };
 
   system.primaryUser = config.mine.primaryUser;
