@@ -72,8 +72,6 @@ _: {
         (pkgs.aspellWithDicts (
           dicts: with dicts; [
             en
-            en-computers
-            en-science
             da
           ]
         )) # (:checkers spell +aspell) — same dict set as features/documents.nix
