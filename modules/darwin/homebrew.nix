@@ -48,8 +48,8 @@ _: {
           taps = {
             "homebrew/homebrew-core" = inputs.homebrew-core;
             "homebrew/homebrew-cask" = inputs.homebrew-cask;
-            "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
-            "homebrew/homebrew-services" = inputs.homebrew-services;
+            # "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+            # "homebrew/homebrew-services" = inputs.homebrew-services;
           }
           // config.mine.darwin.brew.taps;
         };
@@ -60,6 +60,7 @@ _: {
             casks
             masApps
             ;
+          taps = builtins.attrNames config.nix-homebrew.taps;
           caskArgs.no_quarantine = true;
           onActivation = {
             cleanup = "uninstall";
