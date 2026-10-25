@@ -68,7 +68,7 @@ Grouped into five sub-steps; each item is one checklist entry.
 ### P1 — Core inputs & nix settings
 
 - [x] Port the `nix.*` settings block, synchronized across NixOS / nix-darwin / Home Manager where
-      sensible: `substituters` + `trusted-public-keys` (`nix-community.cachix.org`, `cache.garnix.io`,
+      sensible: `substituters` + `trusted-public-keys` (`nix-community.cachix.org`, 
       `numtide.cachix.org`), `experimental-features` (incl. `ca-derivations`, `recursive-nix`,
       `fetch-closure`, `blake3-hashes`, `auto-allocate-uids`, `cgroups`), `nix.gc` (weekly
       `--delete-older-than 30d`), `optimise.automatic`, `trusted-users`, `download-buffer-size`, `sandbox`,
