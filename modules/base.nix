@@ -59,7 +59,7 @@
         config.flake.modules.darwin.agenix
         config.flake.modules.darwin.nix-settings
         config.flake.modules.darwin.nh
-        config.flake.modules.darwin.hosts
+        # config.flake.modules.darwin.hosts
         config.flake.modules.darwin.tailscale
         config.flake.modules.darwin.homebrew
         config.flake.modules.darwin.fonts

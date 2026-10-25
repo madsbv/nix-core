@@ -21,9 +21,9 @@
     };
   };
 
-  flake.modules.darwin.hosts = {
-    environment.etc."hosts" = {
-      text = builtins.readFile (inputs.hosts + "/hosts");
-    };
-  };
+  # flake.modules.darwin.hosts = {
+  #   environment.etc."hosts" = {
+  #     text = builtins.readFile (inputs.hosts + "/hosts");
+  #   };
+  # };
 }
