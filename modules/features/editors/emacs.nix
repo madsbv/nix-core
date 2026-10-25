@@ -18,17 +18,22 @@ _: {
       emacsPkg =
         if pkgs.stdenv.isDarwin then
           emacsBase.overrideAttrs (old: {
+            # Patches are pinned to a homebrew-emacs-plus commit (b7f4710,
+            # which includes the round-undecorated-frame geometry fix) so
+            # upstream master edits cannot silently invalidate the fetchpatch
+            # hashes. fetchpatch hashes normalized patch output, not raw bytes,
+            # and can still shift across nixpkgs revisions.
             patches = (old.patches or [ ]) ++ [
               (pkgs.fetchpatch {
-                url = "https://raw.githubusercontent.com/d12frosted/homebrew-emacs-plus/master/patches/emacs-28/fix-window-role.patch";
+                url = "https://raw.githubusercontent.com/d12frosted/homebrew-emacs-plus/b7f47101868eeda09ec75251eabb0cce7446abb2/patches/emacs-28/fix-window-role.patch";
                 sha256 = "+z/KfsBm1lvZTZNiMbxzXQGRTjkCFO4QPlEK35upjsE=";
               })
               (pkgs.fetchpatch {
-                url = "https://github.com/d12frosted/homebrew-emacs-plus/raw/refs/heads/master/patches/emacs-30/round-undecorated-frame.patch";
-                sha256 = "uYIxNTyfbprx5mCqMNFVrBcLeo+8e21qmBE3lpcnd+4=";
+                url = "https://raw.githubusercontent.com/d12frosted/homebrew-emacs-plus/b7f47101868eeda09ec75251eabb0cce7446abb2/patches/emacs-30/round-undecorated-frame.patch";
+                sha256 = "fesZ0H3LO6T2AiRV8ASozKxZBpvVzwLEcLDy6rctR6c=";
               })
               (pkgs.fetchpatch {
-                url = "https://raw.githubusercontent.com/d12frosted/homebrew-emacs-plus/master/patches/emacs-30/system-appearance.patch";
+                url = "https://raw.githubusercontent.com/d12frosted/homebrew-emacs-plus/b7f47101868eeda09ec75251eabb0cce7446abb2/patches/emacs-30/system-appearance.patch";
                 sha256 = "3QLq91AQ6E921/W9nfDjdOUWR8YVsqBAT/W9c1woqAw=";
               })
             ];
