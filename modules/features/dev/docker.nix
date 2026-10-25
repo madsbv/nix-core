@@ -16,7 +16,7 @@ _: {
     };
   flake.modules.darwin.docker = _: {
     config = {
-      mine.darwin.brew.casks = [ "docker" ];
+      mine.darwin.brew.casks = [ "docker-desktop" ];
     };
   };
 }
