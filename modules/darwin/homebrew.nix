@@ -52,6 +52,12 @@ _: {
             # "homebrew/homebrew-services" = inputs.homebrew-services;
           }
           // config.mine.darwin.brew.taps;
+          trust = {
+            formulae = config.mine.darwin.brew.brews;
+            casks = [ ];
+            commands = [ ];
+            taps = [ ];
+          };
         };
         homebrew = {
           enable = true;
@@ -61,7 +67,6 @@ _: {
             masApps
             ;
           taps = builtins.attrNames config.nix-homebrew.taps;
-          caskArgs.no_quarantine = true;
           onActivation = {
             cleanup = "uninstall";
             upgrade = true;
