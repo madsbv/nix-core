@@ -51,6 +51,8 @@ in
     {
       mine.nix.settings = lib.mkDefault commonSettings;
 
+      nix.extraOptions = config.mine.nix.extraOptions;
+
       nix.settings = lib.mkMerge [
         config.mine.nix.settings
         {
@@ -98,6 +100,8 @@ in
     {
       mine.nix.settings = lib.mkDefault commonSettings;
 
+      nix.extraOptions = config.mine.nix.extraOptions;
+
       nix.settings = lib.mkMerge [
         config.mine.nix.settings
         {
@@ -134,6 +138,8 @@ in
     }:
     {
       mine.nix.settings = lib.mkDefault commonSettings;
+
+      nix.extraOptions = config.mine.nix.extraOptions;
 
       nix.settings = config.mine.nix.settings;
 
