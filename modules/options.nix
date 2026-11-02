@@ -266,6 +266,11 @@ in
         default = { };
         description = "nix.conf settings shared across NixOS, nix-darwin and Home Manager.";
       };
+      extraOptions = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Extra lines to add to nix.conf verbatim";
+      };
       allowUnfree = lib.mkOption {
         type = lib.types.bool;
         default = true;
