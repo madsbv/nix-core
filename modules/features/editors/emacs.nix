@@ -16,7 +16,7 @@ _: {
       # `fix-window-role` (yabai window management), `round-undecorated-frame`,
       # and `system-appearance` (OS light/dark mode). Linux needs no patches.
       emacsPkg =
-        if pkgs.stdenv.isDarwin then
+        if pkgs.stdenv.hostPlatform.isDarwin then
           emacsBase.overrideAttrs (old: {
             # Patches are pinned to a homebrew-emacs-plus commit (b7f4710,
             # which includes the round-undecorated-frame geometry fix) so
@@ -77,7 +77,7 @@ _: {
         )) # (:checkers spell +aspell) — same dict set as features/documents.nix
         pkgs.symbola # Emacs fallback font
       ]
-      ++ lib.optionals pkgs.stdenv.isLinux [
+      ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
         pkgs.xclip # org-download-clipboard
         pkgs.maim # org-download screenshots
       ];

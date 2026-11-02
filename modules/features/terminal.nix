@@ -10,8 +10,9 @@ let
         platforms = prev.lib.platforms.unix;
       };
       nativeBuildInputs =
-        attrs.nativeBuildInputs ++ prev.lib.optionals prev.stdenv.isDarwin [ prev.gettext ];
-      buildInputs = attrs.buildInputs ++ prev.lib.optionals prev.stdenv.isDarwin [ prev.libiconv ];
+        attrs.nativeBuildInputs ++ prev.lib.optionals prev.stdenv.hostPlatform.isDarwin [ prev.gettext ];
+      buildInputs =
+        attrs.buildInputs ++ prev.lib.optionals prev.stdenv.hostPlatform.isDarwin [ prev.libiconv ];
     });
   };
 in

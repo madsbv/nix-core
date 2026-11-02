@@ -32,7 +32,7 @@ in
     {
       nix.registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
     }
-    (lib.mkIf pkgs.stdenv.isLinux {
+    (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       environment.etc = lib.mapAttrs' (
         name: flake: lib.nameValuePair "nix/path/${name}" { source = flake; }
       ) flakeInputs;

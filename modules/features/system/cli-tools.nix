@@ -60,7 +60,7 @@ in
     {
       home.packages =
         (pkgList pkgs)
-        ++ lib.optionals pkgs.stdenv.isLinux [
+        ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           # Also present on standalone Home Manager hosts that may run X (the work
           # laptop). Duplicated intentionally with the NixOS system package.
           pkgs.xsel
