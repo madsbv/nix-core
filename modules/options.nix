@@ -153,6 +153,14 @@ in
       description = "Path to SSH key for commit signing. Set in the leaf host identity; when non-null, programs.git.signing is enabled.";
     };
 
+    # Rust toolchain config (`~/.cargo/config.toml`), serialized from this attrset
+    # by `features/dev/_rust.nix`. Core sets the defaults; leaves merge keys in.
+    rust.cargoConfig = lib.mkOption {
+      type = lib.types.attrsOf lib.types.anything;
+      default = { };
+      description = "Cargo config attrset, serialized to `~/.cargo/config.toml`.";
+    };
+
     # Remote building (wired by `modules/system/builder.nix`).
     remoteBuilder = {
       authorizedKeys = lib.mkOption {
