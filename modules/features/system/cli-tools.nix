@@ -27,6 +27,7 @@ let
       parallel-full
       rage
       ripgrep
+      ripgrep-all
       sd
       sqlite
       tree
