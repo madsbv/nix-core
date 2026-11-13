@@ -19,6 +19,12 @@
       config.flake.modules.homeManager.fortran
       config.flake.modules.homeManager.R
       config.flake.modules.homeManager.latex
+      config.flake.modules.homeManager.c-cpp
+      config.flake.modules.homeManager.kcl
+      config.flake.modules.homeManager.protobuf
+      config.flake.modules.homeManager.docker
+      config.flake.modules.homeManager.kubernetes
+      config.flake.modules.homeManager.k9s
     ];
     darwin = [
       config.flake.modules.darwin.docker
