@@ -54,6 +54,8 @@ _: {
       ]);
     in
     {
+      # NOTE: runs as a systemd user unit. On WSL it does not inherit DISPLAY from
+      # zsh (see features/wsl.nix), so the daemon may be unable to open GUI frames.
       services.emacs = {
         enable = true;
         package = emacs;

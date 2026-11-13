@@ -14,6 +14,10 @@ _: {
       };
 
       # Evaluated by the shell, so the gateway address is resolved per session.
+      # NOTE: only interactive zsh gets DISPLAY. The systemd user unit used by
+      # `services.emacs` (features/editors/emacs.nix) does not inherit it, so a
+      # daemon started at login may have no display. Emacs started from the shell
+      # works. Fix would be a wrapper ExecStart that exports DISPLAY, not done yet.
       programs.zsh = {
         envExtra = "export DISPLAY=$(ip route show default | awk '{ print $3; exit }'):0.0";
         # The Ubuntu ping is used because nixpkgs ping lacks cap_net_raw.
