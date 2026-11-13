@@ -12,6 +12,9 @@ let
   # valid for any user and any shell (bash, root, non-login).
   commonAliases =
     { pkgs, flakeRoot }:
+    let
+      grc = "${pkgs.grc}/bin/grc";
+    in
     {
       gj = "just --justfile ${flakeRoot}/justfile";
       j = "just";
@@ -24,6 +27,39 @@ let
       # nixvim has no native `vimdiffAlias`, so provide the equivalent as an
       # alias (nvim `-d` is diff mode).
       vimdiff = "nvim -d";
+
+      ll = "ls -l";
+      la = "ls -a";
+      lla = "ls -al";
+      lal = "ls -al";
+      ".." = "cd ../";
+      "..." = "cd ../../";
+      "...." = "cd ../../../";
+      "....." = "cd ../../../../";
+      "......" = "cd ../../../../../";
+      cdtmp = "cd $(mktemp -d)";
+      cdr = "cd $(${pkgs.git}/bin/git rev-parse --show-toplevel)";
+      cdc = "cd ${flakeRoot}";
+      nfu = "nix flake update";
+      nfi = "nix flake info";
+
+      # `grc` colorizes common system tools (https://github.com/garabik/grc).
+      df = "${grc} df";
+      du = "${grc} du";
+      mount = "${grc} mount";
+      traceroute = "${grc} traceroute";
+      ps = "${grc} ps";
+      dig = "${grc} dig";
+      free = "${grc} free";
+      uptime = "${grc} uptime";
+      netstat = "${grc} netstat";
+      ifconfig = "${grc} ifconfig";
+      ss = "${grc} ss";
+      lsof = "${grc} lsof";
+      ports = "netstat -tulanp";
+      ip = "ip --color=auto";
+      egrep = "egrep --color=auto";
+      fgrep = "fgrep --color=auto";
     };
 
   # User-only aliases: an XDG cache path and the zoxide wrappers, which only
