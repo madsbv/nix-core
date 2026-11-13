@@ -303,7 +303,7 @@ in
         };
         extraArgs = lib.mkOption {
           type = lib.types.singleLineStr;
-          default = "--keep-since 4d --keep 3";
+          default = "--keep-since 30d --keep 10";
           description = "Extra arguments passed to `nh clean`.";
         };
         startCalendarInterval = lib.mkOption {
