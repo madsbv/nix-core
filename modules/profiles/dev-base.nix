@@ -4,6 +4,8 @@
     nixos = [ ];
     homeManager = [
       config.flake.modules.homeManager.git
+      config.flake.modules.homeManager.lazygit
+      config.flake.modules.homeManager.gitlab
       config.flake.modules.homeManager.ssh
       config.flake.modules.homeManager.gh
       config.flake.modules.homeManager.direnv
