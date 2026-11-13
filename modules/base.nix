@@ -39,7 +39,10 @@
         config.flake.modules.homeManager.agenix
         config.flake.modules.homeManager.nix-settings
         config.flake.modules.homeManager.nh
-        config.flake.modules.homeManager.nox
+        # TODO: Fix nox upstream; doesn't currently compile through flake
+        # due to pkg-config/zstd issue.
+        # config.flake.modules.homeManager.nox
+
         # Prefer XDG dirs on every host type (Home Manager still defaults this
         # to `false`; leaves may override), and enable the HM XDG module
         # (base dirs, cache/data/config env vars).
