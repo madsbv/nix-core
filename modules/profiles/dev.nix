@@ -25,6 +25,7 @@
       config.flake.modules.homeManager.docker
       config.flake.modules.homeManager.kubernetes
       config.flake.modules.homeManager.k9s
+      config.flake.modules.homeManager.opencode
     ];
     darwin = [
       config.flake.modules.darwin.docker
