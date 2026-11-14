@@ -528,7 +528,7 @@ awful.rules.rules = {
 -- Load per-host application rules from rules.lua.
 -- Core ships a default (empty) file; leaves override it via
 -- mkDefault priority to add host-specific tag mappings.
-local rules_file = awful.util.getdir() .. "/rules.lua"
+local rules_file = gears.filesystem.get_configuration_dir() .. "rules.lua"
 local f = io.open(rules_file, "r")
 if f then
     f:close()

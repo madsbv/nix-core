@@ -3,3 +3,4 @@
 -- default; leaves provide their own rules.lua to add host-specific
 -- application-to-tag mappings (e.g. Steam -> tag 7, Discord -> tag 8).
 -- Use table.insert(awful.rules.rules, { rule = {...}, properties = {...} })
+local awful = require("awful")
