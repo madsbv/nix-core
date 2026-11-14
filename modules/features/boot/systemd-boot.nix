@@ -1,5 +1,5 @@
 _: {
-  flake.modules.nixos.systemd-boot = { lib, ... }: {
+  flake.modules.nixos.systemd-boot = _: {
     boot = {
       tmp.cleanOnBoot = true;
       zfs.forceImportRoot = false;
