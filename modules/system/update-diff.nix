@@ -14,15 +14,7 @@
 {
   config = {
     mine.system.updateDiff = {
-      command = lib.mkDefault (
-        # dix < 1.4.2 fails with "attempt to write a readonly database" when
-        # reading the Nix sqlite DB as non-root (faukah/dix#47), which broke
-        # activation. Fall back to nvd on older nixpkgs that ship those versions.
-        if lib.versionAtLeast (pkgs.dix.version or "0") "1.4.2" then
-          "${lib.getExe pkgs.dix} --force-correctness"
-        else
-          "${pkgs.nvd}/bin/nvd --nix-bin-dir=${config.nix.package}/bin diff"
-      );
+      command = lib.mkDefault "${lib.getExe pkgs.dix} diff";
       text = lib.mkDefault ''
         if [[ -e /run/current-system && -e "''${incoming-}" ]]; then
           echo "--- diff to current-system"
