@@ -10,6 +10,7 @@
     (import ./treefmt.nix { inherit inputs; })
     ./statix.nix
     (import ./git-hooks.nix { inherit inputs; })
+    ./platforms.nix
     ./ci.nix
   ];
 }
