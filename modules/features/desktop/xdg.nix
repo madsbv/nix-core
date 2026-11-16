@@ -2,9 +2,11 @@ _: {
   flake.modules.nixos.xdg-desktop =
     { pkgs, ... }:
     {
-      services.gnome.gnome-keyring.enable = true;
-      services.tumbler.enable = true;
-      services.gvfs.enable = true;
+      services = {
+        gnome.gnome-keyring.enable = true;
+        tumbler.enable = true;
+        gvfs.enable = true;
+      };
 
       xdg.portal = {
         enable = true;
@@ -12,22 +14,24 @@ _: {
         extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
       };
 
-      programs.i3lock.enable = true;
-      programs.nm-applet.enable = true;
-      programs.thunar = {
-        enable = true;
-        plugins = with pkgs; [
-          thunar-volman
-          thunar-dropbox-plugin
-          thunar-archive-plugin
-          thunar-media-tags-plugin
-        ];
-      };
-
       xdg.mime.defaultApplications = {
         "inode/directory" = "thunar.desktop";
       };
-      programs.xfconf.enable = true;
-      programs.dconf.enable = true;
+
+      programs = {
+        i3lock.enable = true;
+        nm-applet.enable = true;
+        thunar = {
+          enable = true;
+          plugins = with pkgs; [
+            thunar-volman
+            thunar-dropbox-plugin
+            thunar-archive-plugin
+            thunar-media-tags-plugin
+          ];
+        };
+        xfconf.enable = true;
+        dconf.enable = true;
+      };
     };
 }

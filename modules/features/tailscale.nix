@@ -38,52 +38,54 @@ let
     };
 in
 {
-  flake.modules.nixos.tailscale =
-    {
-      config,
-      lib,
-      ...
-    }:
-    {
-      options.mine.network.tailscale = tailscaleOptions { inherit lib; };
-      config = {
-        services.tailscale = {
-          enable = true;
-          extraUpFlags = [
-            "--ssh"
-          ]
-          ++ lib.optionals (config.mine.network.tailscale.hostname != null) [
-            "--hostname=${config.mine.network.tailscale.hostname}"
-          ]
-          ++ map (t: "--advertise-tags=${t}") config.mine.network.tailscale.tags
-          ++ map (r: "--advertise-routes=${r}") config.mine.network.tailscale.advertiseRoutes
-          ++ lib.optionals config.mine.network.tailscale.advertiseExitNode [
-            "--advertise-exit-node"
-          ];
-        }
-        // lib.optionalAttrs (config.mine.network.tailscale.authKeyFile != null) {
-          authKeyFile = config.mine.network.tailscale.authKeyFile;
+  flake.modules = {
+    nixos.tailscale =
+      {
+        config,
+        lib,
+        ...
+      }:
+      {
+        options.mine.network.tailscale = tailscaleOptions { inherit lib; };
+        config = {
+          services.tailscale = {
+            enable = true;
+            extraUpFlags = [
+              "--ssh"
+            ]
+            ++ lib.optionals (config.mine.network.tailscale.hostname != null) [
+              "--hostname=${config.mine.network.tailscale.hostname}"
+            ]
+            ++ map (t: "--advertise-tags=${t}") config.mine.network.tailscale.tags
+            ++ map (r: "--advertise-routes=${r}") config.mine.network.tailscale.advertiseRoutes
+            ++ lib.optionals config.mine.network.tailscale.advertiseExitNode [
+              "--advertise-exit-node"
+            ];
+          }
+          // lib.optionalAttrs (config.mine.network.tailscale.authKeyFile != null) {
+            authKeyFile = config.mine.network.tailscale.authKeyFile;
+          };
         };
       };
-    };
 
-  flake.modules.darwin.tailscale =
-    {
-      lib,
-      ...
-    }:
-    {
-      # Same option surface as NixOS so the pruning HM mirror sees a consistent
-      # shape; only `enable` is applied on darwin.
-      options.mine.network.tailscale = tailscaleOptions { inherit lib; };
-      config.services.tailscale.enable = lib.mkDefault true;
-    };
-
-  flake.modules.homeManager.tailscale =
-    { pkgs, ... }:
-    {
-      config = {
-        home.packages = [ pkgs.tailscale ];
+    darwin.tailscale =
+      {
+        lib,
+        ...
+      }:
+      {
+        # Same option surface as NixOS so the pruning HM mirror sees a consistent
+        # shape; only `enable` is applied on darwin.
+        options.mine.network.tailscale = tailscaleOptions { inherit lib; };
+        config.services.tailscale.enable = lib.mkDefault true;
       };
-    };
+
+    homeManager.tailscale =
+      { pkgs, ... }:
+      {
+        config = {
+          home.packages = [ pkgs.tailscale ];
+        };
+      };
+  };
 }

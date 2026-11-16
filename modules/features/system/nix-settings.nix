@@ -42,120 +42,128 @@ let
   };
 in
 {
-  flake.modules.nixos.nix-settings =
-    {
-      config,
-      lib,
-      ...
-    }:
-    {
-      mine.nix.settings = lib.mkDefault commonSettings;
+  flake.modules = {
+    nixos.nix-settings =
+      {
+        config,
+        lib,
+        ...
+      }:
+      {
+        mine.nix.settings = lib.mkDefault commonSettings;
 
-      nix.extraOptions = config.mine.nix.extraOptions;
+        nix = {
+          extraOptions = config.mine.nix.extraOptions;
 
-      nix.settings = lib.mkMerge [
-        config.mine.nix.settings
-        {
-          sandbox = true;
-          trusted-users = [
-            "root"
-            "@admin"
-            "@wheel"
-            "@builders"
+          settings = lib.mkMerge [
+            config.mine.nix.settings
+            {
+              sandbox = true;
+              trusted-users = [
+                "root"
+                "@admin"
+                "@wheel"
+                "@builders"
+              ];
+              experimental-features = [
+                "auto-allocate-uids"
+                "cgroups"
+              ];
+              auto-allocate-uids = lib.mkDefault true;
+              system-features = [ "uid-range" ];
+            }
           ];
-          experimental-features = [
-            "auto-allocate-uids"
-            "cgroups"
-          ];
-          auto-allocate-uids = lib.mkDefault true;
-          system-features = [ "uid-range" ];
-        }
-      ];
 
-      # When `mine.nix.clean.enable` (nh clean) is on, nh owns periodic GC and
-      # the NixOS nix-collect-garbage timer is disabled to avoid double work
-      # (the nh NixOS module warns about exactly this combination).
-      nix.gc = {
-        automatic = lib.mkDefault (config.mine.nix.gc.enable && !config.mine.nix.clean.enable);
-        dates = "weekly";
-        options = config.mine.nix.gc.options;
-      };
+          # When `mine.nix.clean.enable` (nh clean) is on, nh owns periodic GC and
+          # the NixOS nix-collect-garbage timer is disabled to avoid double work
+          # (the nh NixOS module warns about exactly this combination).
+          gc = {
+            automatic = lib.mkDefault (config.mine.nix.gc.enable && !config.mine.nix.clean.enable);
+            dates = "weekly";
+            options = config.mine.nix.gc.options;
+          };
 
-      nix.optimise.automatic = lib.mkDefault (!config.boot.isContainer);
+          optimise.automatic = lib.mkDefault (!config.boot.isContainer);
 
-      nix.daemonCPUSchedPolicy = "idle";
-      nix.daemonIOSchedClass = "idle";
-
-      systemd.services.nix-daemon.serviceConfig.OOMScoreAdjust = lib.mkDefault 250;
-
-      nixpkgs.config.allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
-    };
-
-  flake.modules.darwin.nix-settings =
-    {
-      config,
-      lib,
-      ...
-    }:
-    {
-      mine.nix.settings = lib.mkDefault commonSettings;
-
-      nix.extraOptions = config.mine.nix.extraOptions;
-
-      nix.settings = lib.mkMerge [
-        config.mine.nix.settings
-        {
-          # sandbox = true / relaxed has problems on Darwin (see
-          # https://github.com/NixOS/nix/issues/4119).
-          sandbox = false;
-          trusted-users = [ "@admin" ];
-        }
-      ];
-
-      nix.gc = {
-        automatic = lib.mkDefault (config.mine.nix.gc.enable && !config.mine.nix.clean.enable);
-        interval = {
-          Weekday = 0;
-          Hour = 2;
-          Minute = 0;
+          daemonCPUSchedPolicy = "idle";
+          daemonIOSchedClass = "idle";
         };
-        options = config.mine.nix.gc.options;
+
+        systemd.services.nix-daemon.serviceConfig.OOMScoreAdjust = lib.mkDefault 250;
+
+        nixpkgs.config.allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
       };
 
-      nix.optimise.automatic = lib.mkDefault config.mine.nix.optimise.automatic;
+    darwin.nix-settings =
+      {
+        config,
+        lib,
+        ...
+      }:
+      {
+        mine.nix.settings = lib.mkDefault commonSettings;
 
-      nix.daemonIOLowPriority = lib.mkDefault true;
+        nix = {
+          extraOptions = config.mine.nix.extraOptions;
 
-      nixpkgs.config.allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
-    };
+          settings = lib.mkMerge [
+            config.mine.nix.settings
+            {
+              # sandbox = true / relaxed has problems on Darwin (see
+              # https://github.com/NixOS/nix/issues/4119).
+              sandbox = false;
+              trusted-users = [ "@admin" ];
+            }
+          ];
 
-  flake.modules.homeManager.nix-settings =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
-    {
-      mine.nix.settings = lib.mkDefault commonSettings;
+          gc = {
+            automatic = lib.mkDefault (config.mine.nix.gc.enable && !config.mine.nix.clean.enable);
+            interval = {
+              Weekday = 0;
+              Hour = 2;
+              Minute = 0;
+            };
+            options = config.mine.nix.gc.options;
+          };
 
-      nix.extraOptions = config.mine.nix.extraOptions;
+          optimise.automatic = lib.mkDefault config.mine.nix.optimise.automatic;
 
-      nix.settings = config.mine.nix.settings;
+          daemonIOLowPriority = lib.mkDefault true;
+        };
 
-      # Home Manager needs a `nix.package` to generate `~/.config/nix/nix.conf`
-      # from `nix.settings`; integrated hosts forward the OS package (overriding
-      # this default), standalone Home Manager needs it set here.
-      nix.package = lib.mkDefault pkgs.nix;
-
-      # On integrated hosts (`submoduleSupport.enable`, i.e. useGlobalPkgs)
-      # `nixpkgs.*` is disabled in the Home Manager evaluation and the OS-level
-      # nix-settings module sets allowUnfree on the shared nixpkgs instead.
-      # Standalone Home Manager has its own nixpkgs, so set it here. The mkIf
-      # must wrap the whole `nixpkgs.config` (not the nested key) so the
-      # condition is applied at the option level.
-      nixpkgs.config = lib.mkIf (!config.submoduleSupport.enable) {
-        allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
+        nixpkgs.config.allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
       };
-    };
+
+    homeManager.nix-settings =
+      {
+        config,
+        lib,
+        pkgs,
+        ...
+      }:
+      {
+        mine.nix.settings = lib.mkDefault commonSettings;
+
+        nix = {
+          extraOptions = config.mine.nix.extraOptions;
+
+          settings = config.mine.nix.settings;
+
+          # Home Manager needs a `nix.package` to generate `~/.config/nix/nix.conf`
+          # from `nix.settings`; integrated hosts forward the OS package (overriding
+          # this default), standalone Home Manager needs it set here.
+          package = lib.mkDefault pkgs.nix;
+        };
+
+        # On integrated hosts (`submoduleSupport.enable`, i.e. useGlobalPkgs)
+        # `nixpkgs.*` is disabled in the Home Manager evaluation and the OS-level
+        # nix-settings module sets allowUnfree on the shared nixpkgs instead.
+        # Standalone Home Manager has its own nixpkgs, so set it here. The mkIf
+        # must wrap the whole `nixpkgs.config` (not the nested key) so the
+        # condition is applied at the option level.
+        nixpkgs.config = lib.mkIf (!config.submoduleSupport.enable) {
+          allowUnfree = lib.mkDefault config.mine.nix.allowUnfree;
+        };
+      };
+  };
 }

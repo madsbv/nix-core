@@ -14,68 +14,70 @@
 # When `mine.nix.clean.enable` is true it replaces the classic `nix.gc` timers
 # (gated in `modules/features/system/nix-settings.nix`).
 _: {
-  flake.modules.nixos.nh =
-    { config, lib, ... }:
-    {
-      programs.nh = {
-        enable = lib.mkDefault true;
-        flake = lib.mkIf (config.mine.system.registerFlake.flake != null) (
-          toString config.mine.system.registerFlake.flake
-        );
-        clean = {
-          enable = lib.mkDefault config.mine.nix.clean.enable;
-          dates = lib.mkDefault config.mine.nix.clean.dates;
-          extraArgs = lib.mkDefault config.mine.nix.clean.extraArgs;
-        };
-      };
-    };
-
-  flake.modules.homeManager.nh =
-    { config, lib, ... }:
-    {
-      programs.nh = {
-        enable = lib.mkDefault true;
-        flake = lib.mkIf (config.mine.system.registerFlake.flake != null) (
-          toString config.mine.system.registerFlake.flake
-        );
-        # `nh clean user` only makes sense for the user's own profile; on
-        # integrated hosts the NixOS/nix-darwin service handles everything.
-        clean = lib.mkIf (!config.submoduleSupport.enable) {
-          enable = lib.mkDefault config.mine.nix.clean.enable;
-          dates = lib.mkDefault config.mine.nix.clean.dates;
-          extraArgs = lib.mkDefault config.mine.nix.clean.extraArgs;
-        };
-      };
-    };
-
-  flake.modules.darwin.nh =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
-    let
-      enabled = config.mine.nix.clean.enable;
-    in
-    {
-      environment = lib.mkIf enabled {
-        systemPackages = [ pkgs.nh ];
-        variables = lib.mkIf (config.mine.system.registerFlake.flake != null) {
-          NH_FLAKE = toString config.mine.system.registerFlake.flake;
+  flake.modules = {
+    nixos.nh =
+      { config, lib, ... }:
+      {
+        programs.nh = {
+          enable = lib.mkDefault true;
+          flake = lib.mkIf (config.mine.system.registerFlake.flake != null) (
+            toString config.mine.system.registerFlake.flake
+          );
+          clean = {
+            enable = lib.mkDefault config.mine.nix.clean.enable;
+            dates = lib.mkDefault config.mine.nix.clean.dates;
+            extraArgs = lib.mkDefault config.mine.nix.clean.extraArgs;
+          };
         };
       };
 
-      launchd.daemons.nh-clean = lib.mkIf enabled {
-        path = [ config.nix.package ];
-        command = "exec nh clean all ${config.mine.nix.clean.extraArgs}";
-        serviceConfig = {
-          RunAtLoad = false;
-          StartCalendarInterval = config.mine.nix.clean.startCalendarInterval;
-          WorkingDirectory = "/var/root";
-          LowPriorityIO = true;
-          ProcessType = "Background";
+    homeManager.nh =
+      { config, lib, ... }:
+      {
+        programs.nh = {
+          enable = lib.mkDefault true;
+          flake = lib.mkIf (config.mine.system.registerFlake.flake != null) (
+            toString config.mine.system.registerFlake.flake
+          );
+          # `nh clean user` only makes sense for the user's own profile; on
+          # integrated hosts the NixOS/nix-darwin service handles everything.
+          clean = lib.mkIf (!config.submoduleSupport.enable) {
+            enable = lib.mkDefault config.mine.nix.clean.enable;
+            dates = lib.mkDefault config.mine.nix.clean.dates;
+            extraArgs = lib.mkDefault config.mine.nix.clean.extraArgs;
+          };
         };
       };
-    };
+
+    darwin.nh =
+      {
+        config,
+        lib,
+        pkgs,
+        ...
+      }:
+      let
+        enabled = config.mine.nix.clean.enable;
+      in
+      {
+        environment = lib.mkIf enabled {
+          systemPackages = [ pkgs.nh ];
+          variables = lib.mkIf (config.mine.system.registerFlake.flake != null) {
+            NH_FLAKE = toString config.mine.system.registerFlake.flake;
+          };
+        };
+
+        launchd.daemons.nh-clean = lib.mkIf enabled {
+          path = [ config.nix.package ];
+          command = "exec nh clean all ${config.mine.nix.clean.extraArgs}";
+          serviceConfig = {
+            RunAtLoad = false;
+            StartCalendarInterval = config.mine.nix.clean.startCalendarInterval;
+            WorkingDirectory = "/var/root";
+            LowPriorityIO = true;
+            ProcessType = "Background";
+          };
+        };
+      };
+  };
 }
