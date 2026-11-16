@@ -9,7 +9,7 @@
 # It closes over core's pinned `inputs`, so leaves reach home-manager,
 # nix-darwin, agenix(-rekey) and deploy-rs through core without declaring them.
 { inputs }:
-{ lib, self, ... }:
+{ lib, ... }:
 let
   load = import ../lib/load.nix { };
   loadWithSkip = skip: import ../lib/load.nix { inherit skip; };
@@ -51,77 +51,8 @@ in
     # devShell uses `config.flake.inputs` (core's re-exported inputs) instead of
     # currying — it needs to work identically in core and in leaves.
     ./devShell.nix
-    # CI entrypoint (`nix run .#ci`), propagated to leaves like treefmt.
-    ./ci.nix
-    # treefmt-nix propagates to leaf flakes so `nix fmt` and the treefmt check
-    # work identically in all three repos. The flakeModule is imported from
-    # core's pinned treefmt-nix input.
-    inputs.treefmt-nix.flakeModule
-    inputs.git-hooks.flakeModule
-    {
-      perSystem.treefmt = {
-        projectRootFile = "flake.nix";
-        programs = {
-          nixfmt.enable = true;
-          deadnix.enable = true;
-          statix.enable = true;
-        };
-      };
-    }
-    # Override the treefmt-nix formatter to disable the eval cache.
-    # Without this, `nix fmt` uses ~/.cache/treefmt and can silently skip files
-    # that the sandboxed `nix flake check` (which runs `treefmt --no-cache`)
-    # correctly detects as unformatted.
-    {
-      perSystem =
-        {
-          config,
-          pkgs,
-          lib,
-          ...
-        }:
-        {
-          formatter = lib.mkForce (
-            pkgs.writeShellScriptBin "treefmt" ''
-              export TREEFMT_NO_CACHE=1
-              exec ${config.treefmt.build.wrapper}/bin/treefmt "$@"
-            ''
-          );
-        };
-    }
-    # treefmt's statix formatter only applies fixes and never reports what it
-    # cannot fix, so the lint is enforced here as a check instead. `self` is the
-    # consuming flake, so leaves lint their own sources.
-    {
-      perSystem =
-        { pkgs, ... }:
-        {
-          checks.statix = pkgs.runCommandLocal "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
-            cd ${self}
-            statix check .
-            touch $out
-          '';
-        };
-    }
-    # Pre-commit hooks run the same formatter wrapper and statix check as the
-    # `nix fmt` / `nix flake check` paths. `check.enable = false` because the
-    # treefmt and statix checks above already run in `nix flake check`.
-    {
-      perSystem =
-        { config, ... }:
-        {
-          pre-commit = {
-            check.enable = false;
-            settings.hooks = {
-              treefmt = {
-                enable = true;
-                package = config.treefmt.build.wrapper;
-              };
-              statix.enable = true;
-            };
-          };
-        };
-    }
+    # Formatting, lint, pre-commit, and CI quality gates, propagated to leaves.
+    (import ./checks { inherit inputs; })
   ]
   ++ features
   ++ profiles

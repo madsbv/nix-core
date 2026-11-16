@@ -111,7 +111,13 @@ core/
 │   ├── agenix.nix            # agenix(-rekey) wiring, per class (nixos + homeManager + darwin)
 │   ├── base.nix              # composites: nixos.base / darwin.base / homeManager.base
 │   ├── color-scheme.nix      # base16 nixos/homeManager/darwin modules, default molokai
-│   ├── (treefmt config)      # nixfmt / statix / deadnix, wired into `nix flake check` (in flake-module.nix)
+│   ├── checks/               # propagated quality gates (imported curried by flake-module.nix)
+│   │   ├── default.nix       #   aggregator
+│   │   ├── treefmt.nix       #   nixfmt / statix / deadnix, `nix fmt` + the treefmt check
+│   │   ├── statix.nix        #   statix check in `nix flake check`
+│   │   ├── git-hooks.nix     #   pre-commit hooks (treefmt + statix), installed by devShell
+│   │   └── ci.nix            #   `nix run .#ci` entrypoint
+│   ├── namaka.nix            # core-only snapshot tests (imported by flake.nix, not propagated)
 │   ├── devShell.nix          # core dev shell (curried over core's inputs)
 │   ├── _hm-mirror.nix        # helper: prune-based identity mirror for Home Manager evals
 │   ├── profiles/             # role aggregates: base, shell, dev (class-keyed modules)
