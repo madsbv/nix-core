@@ -10,7 +10,7 @@
 host := `hostname`
 
 fmt:
-    treefmt
+    nix fmt
 
 check: fmt
     nix flake check

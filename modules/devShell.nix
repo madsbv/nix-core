@@ -6,9 +6,17 @@
   config,
   ...
 }:
+let
+  flakeInputs = config.flake.inputs;
+in
 {
   perSystem =
-    { pkgs, system, ... }:
+    {
+      pkgs,
+      system,
+      config,
+      ...
+    }:
     {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -21,10 +29,11 @@
           nixfmt
           statix
           deadnix
-          config.flake.inputs.deploy-rs.packages.${system}.default
-          config.flake.inputs.agenix-rekey.packages.${system}.default
-          config.flake.inputs.nix-auth.packages.${system}.default
-          config.flake.inputs.namaka.packages.${system}.default
+          config.treefmt.build.wrapper
+          flakeInputs.deploy-rs.packages.${system}.default
+          flakeInputs.agenix-rekey.packages.${system}.default
+          flakeInputs.nix-auth.packages.${system}.default
+          flakeInputs.namaka.packages.${system}.default
         ];
       };
     };
