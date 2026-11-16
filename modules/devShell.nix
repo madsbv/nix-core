@@ -19,6 +19,8 @@ in
     }:
     {
       devShells.default = pkgs.mkShell {
+        # Installs the git hooks from `pre-commit.settings` on shell entry.
+        inputsFrom = [ config.pre-commit.devShell ];
         packages = with pkgs; [
           git
           just

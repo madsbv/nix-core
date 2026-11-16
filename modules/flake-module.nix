@@ -57,6 +57,7 @@ in
     # work identically in all three repos. The flakeModule is imported from
     # core's pinned treefmt-nix input.
     inputs.treefmt-nix.flakeModule
+    inputs.git-hooks.flakeModule
     {
       perSystem.treefmt = {
         projectRootFile = "flake.nix";
@@ -100,6 +101,25 @@ in
             statix check .
             touch $out
           '';
+        };
+    }
+    # Pre-commit hooks run the same formatter wrapper and statix check as the
+    # `nix fmt` / `nix flake check` paths. `check.enable = false` because the
+    # treefmt and statix checks above already run in `nix flake check`.
+    {
+      perSystem =
+        { config, ... }:
+        {
+          pre-commit = {
+            check.enable = false;
+            settings.hooks = {
+              treefmt = {
+                enable = true;
+                package = config.treefmt.build.wrapper;
+              };
+              statix.enable = true;
+            };
+          };
         };
     }
   ]
