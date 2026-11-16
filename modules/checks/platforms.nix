@@ -1,7 +1,10 @@
-# Package platform support: every package a profile installs must be available
-# on the system it is installed on. Each profile is evaluated on its own, since
-# profiles can be alternatives (e.g. desktop vs darwin personal profiles) whose
-# union is not a valid configuration.
+# Package platform support: every package the core profiles install must be
+# available on the system it is installed on.
+#
+# The core profiles are evaluated together (they coexist in real hosts), with
+# a stub identity. Leaf-owned profiles are not included: they are alternatives
+# to each other (e.g. personal-desktop vs personal-darwin) and assume host
+# context, and leaf host evaluations already fail on unsupported packages.
 #
 # Covers `home.packages` (Home Manager, all systems), `environment.systemPackages`
 # for NixOS (Linux systems) and nix-darwin (Darwin systems). Services are not
@@ -19,28 +22,30 @@ let
       };
     };
   };
-  profiles = lib.attrValues config.flake.profiles;
+  # Keep in sync with modules/profiles/. A core profile missing here is not
+  # platform-checked.
+  coreProfiles = [
+    "base"
+    "desktop"
+    "dev"
+    "editors"
+    "shell"
+    "system"
+    "terminal"
+  ];
+  profiles = map (n: config.flake.profiles.${n}) coreProfiles;
 in
 {
   perSystem =
     { pkgs, system, ... }:
     let
       hostPlatform = pkgs.stdenv.hostPlatform;
-      # Failures for every profile, as "<profile>: <package>" lines.
-      failuresFor =
-        packagesOf:
-        lib.unique (
-          lib.concatMap (
-            profile:
-            map (name: "${profile.name}: ${name}") (
-              map (p: p.name) (lib.filter (p: !lib.meta.availableOn hostPlatform p) (packagesOf profile))
-            )
-          ) profiles
-        );
+      unavailable =
+        packages: map (p: p.name) (lib.filter (p: !lib.meta.availableOn hostPlatform p) packages);
       check =
-        name: failures:
+        name: packages:
         let
-          failureFile = pkgs.writeText "${name}-failures" (lib.concatStringsSep "\n" failures);
+          failureFile = pkgs.writeText "${name}-failures" (lib.concatStringsSep "\n" (unavailable packages));
         in
         pkgs.runCommandLocal "platform-${name}" { } ''
           if [ -s ${failureFile} ]; then
@@ -53,43 +58,32 @@ in
     in
     {
       checks = {
-        platform-home = check "home" (
-          failuresFor (
-            profile:
+        platform-home =
+          check "home"
             (config.flake.lib.mkHomeConfig {
               inherit system;
               username = "check";
-              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
+              inherit profiles;
               identity = [ stubIdentity ];
-            }).config.home.packages
-          )
-        );
+            }).config.home.packages;
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-        platform-nixos = check "nixos" (
-          failuresFor (
-            profile:
+        platform-nixos =
+          check "nixos"
             (config.flake.lib.mkNixosHost {
-              inherit system;
+              inherit system profiles;
               hostname = "platform-check";
-              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
               identity = [ stubIdentity ];
-            }).config.environment.systemPackages
-          )
-        );
+            }).config.environment.systemPackages;
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-        platform-darwin = check "darwin" (
-          failuresFor (
-            profile:
+        platform-darwin =
+          check "darwin"
             (config.flake.lib.mkDarwinHost {
-              inherit system;
+              inherit system profiles;
               hostname = "platform-check";
-              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
               identity = [ stubIdentity ];
-            }).config.environment.systemPackages
-          )
-        );
+            }).config.environment.systemPackages;
       };
     };
 }
