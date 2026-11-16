@@ -5,7 +5,7 @@ _: {
       home = {
         packages = with pkgs; [
           kubectl
-          helm
+          kubernetes-helm
           kubectx
           kustomize
           sops
