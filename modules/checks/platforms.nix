@@ -1,7 +1,7 @@
-# Package platform support: every package the profiles install must be
-# available on the system it is installed on. Evaluated per class over the
-# union of all profiles, so a package added anywhere fails `nix flake check`
-# here instead of in a leaf host.
+# Package platform support: every package a profile installs must be available
+# on the system it is installed on. Each profile is evaluated on its own, since
+# profiles can be alternatives (e.g. desktop vs darwin personal profiles) whose
+# union is not a valid configuration.
 #
 # Covers `home.packages` (Home Manager, all systems), `environment.systemPackages`
 # for NixOS (Linux systems) and nix-darwin (Darwin systems). Services are not
@@ -19,19 +19,27 @@ let
       };
     };
   };
-  allProfiles = lib.attrValues config.flake.profiles;
+  profiles = lib.attrValues config.flake.profiles;
 in
 {
   perSystem =
     { pkgs, system, ... }:
     let
       hostPlatform = pkgs.stdenv.hostPlatform;
-      unavailable =
-        packages: map (p: p.name) (lib.filter (p: !lib.meta.availableOn hostPlatform p) packages);
+      # Failures for every profile, as "<profile>: <package>" lines.
+      failuresFor =
+        packagesOf:
+        lib.unique (
+          lib.concatMap (
+            profile:
+            map (name: "${profile.name}: ${name}") (
+              map (p: p.name) (lib.filter (p: !lib.meta.availableOn hostPlatform p) (packagesOf profile))
+            )
+          ) profiles
+        );
       check =
-        name: packages:
+        name: failures:
         let
-          failures = unavailable packages;
           failureFile = pkgs.writeText "${name}-failures" (lib.concatStringsSep "\n" failures);
         in
         pkgs.runCommandLocal "platform-${name}" { } ''
@@ -42,36 +50,46 @@ in
           fi
           touch $out
         '';
-      homeCfg = config.flake.lib.mkHomeConfig {
-        inherit system;
-        username = "check";
-        profiles = allProfiles;
-        identity = [ stubIdentity ];
-      };
     in
     {
       checks = {
-        platform-home = check "home" homeCfg.config.home.packages;
+        platform-home = check "home" (
+          failuresFor (
+            profile:
+            (config.flake.lib.mkHomeConfig {
+              inherit system;
+              username = "check";
+              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
+              identity = [ stubIdentity ];
+            }).config.home.packages
+          )
+        );
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-        platform-nixos =
-          check "nixos"
+        platform-nixos = check "nixos" (
+          failuresFor (
+            profile:
             (config.flake.lib.mkNixosHost {
               inherit system;
               hostname = "platform-check";
-              profiles = allProfiles;
+              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
               identity = [ stubIdentity ];
-            }).config.environment.systemPackages;
+            }).config.environment.systemPackages
+          )
+        );
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-        platform-darwin =
-          check "darwin"
+        platform-darwin = check "darwin" (
+          failuresFor (
+            profile:
             (config.flake.lib.mkDarwinHost {
               inherit system;
               hostname = "platform-check";
-              profiles = allProfiles;
+              profiles = [ config.flake.profiles.base ] ++ lib.optional (profile.name != "base") profile;
               identity = [ stubIdentity ];
-            }).config.environment.systemPackages;
+            }).config.environment.systemPackages
+          )
+        );
       };
     };
 }
