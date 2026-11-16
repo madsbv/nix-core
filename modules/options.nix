@@ -90,6 +90,13 @@ in
       description = "Username of the primary user; must be a key of `mine.users`.";
     };
 
+    profileManifest = lib.mkOption {
+      type = lib.types.raw;
+      default = { };
+      internal = true;
+      description = "Profiles, exclusions, and resolved module names this host was built from. Set by the host builders; used for inventory snapshots.";
+    };
+
     users = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule userSubmodule);
       default = { };

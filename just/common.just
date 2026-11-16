@@ -18,6 +18,10 @@ check: fmt
 update:
     nix flake update
 
+# List registered modules per class and each profile's members.
+modules:
+    nix eval --json .#catalog | jq .
+
 # ---- Doom Emacs store-built DOOMDIR ----
 
 # Build the store DOOMDIR to a test link only (no relink, no doom sync).

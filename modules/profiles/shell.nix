@@ -1,9 +1,8 @@
 # Shell profile: class-keyed aggregate of the shell feature.
-{ config, ... }:
-{
+_: {
   flake.profiles.shell = {
-    nixos = [ config.flake.modules.nixos.shell ];
-    homeManager = [ config.flake.modules.homeManager.shell ];
+    nixos = [ "shell" ];
+    homeManager = [ "shell" ];
     darwin = [ ];
   };
 }

@@ -1,17 +1,16 @@
-{ config, ... }:
-{
+_: {
   flake.profiles.desktop = {
     nixos = [
-      config.flake.modules.nixos.pipewire
-      config.flake.modules.nixos.lightdm
-      config.flake.modules.nixos.fonts
-      config.flake.modules.nixos.xdg-desktop
-      config.flake.modules.nixos.bluetooth-desktop
-      config.flake.modules.nixos.printing
-      config.flake.modules.nixos.awesomewm
+      "pipewire"
+      "lightdm"
+      "fonts"
+      "xdg-desktop"
+      "bluetooth-desktop"
+      "printing"
+      "awesomewm"
     ];
     homeManager = [
-      config.flake.modules.homeManager.awesomewm
+      "awesomewm"
     ];
     darwin = [ ];
   };

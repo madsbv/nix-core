@@ -1,15 +1,14 @@
-{ config, ... }:
-{
+_: {
   flake.profiles.dev-base = {
     nixos = [ ];
     homeManager = [
-      config.flake.modules.homeManager.git
-      config.flake.modules.homeManager.lazygit
-      config.flake.modules.homeManager.gitlab
-      config.flake.modules.homeManager.ssh
-      config.flake.modules.homeManager.gh
-      config.flake.modules.homeManager.direnv
-      config.flake.modules.homeManager.dev-tools
+      "git"
+      "lazygit"
+      "gitlab"
+      "ssh"
+      "gh"
+      "direnv"
+      "dev-tools"
     ];
     darwin = [ ];
   };

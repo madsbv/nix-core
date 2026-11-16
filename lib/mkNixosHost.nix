@@ -11,6 +11,7 @@ let
   homeManagerModule = inputs.home-manager.nixosModules.home-manager;
   homeManagerBase = config.flake.modules.homeManager.base;
   baseProfile = config.flake.profiles.base;
+  profileLib = import ./_profiles.nix { inherit lib; };
 in
 {
   flake.lib.mkNixosHost =
@@ -32,8 +33,8 @@ in
       profiles' = map toClassKeyed profiles;
       modules' = toClassKeyed modules;
 
-      profilesNixos = lib.concatLists (map (p: p.nixos) profiles');
-      profilesHm = lib.concatLists (map (p: p.homeManager) profiles');
+      profilesNixos = profileLib.modulesFor config.flake.modules "nixos" profiles';
+      profilesHm = profileLib.modulesFor config.flake.modules "homeManager" profiles';
       modulesNixos = modules'.nixos;
       modulesHm = modules'.homeManager;
     in
@@ -42,6 +43,7 @@ in
       modules = [
         {
           networking.hostName = lib.mkDefault hostname;
+          mine.profileManifest = profileLib.manifest profiles;
         }
         homeManagerModule
         # User creation and per-user Home Manager wiring live in

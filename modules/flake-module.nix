@@ -9,7 +9,7 @@
 # It closes over core's pinned `inputs`, so leaves reach home-manager,
 # nix-darwin, agenix(-rekey) and deploy-rs through core without declaring them.
 { inputs }:
-{ lib, ... }:
+{ lib, config, ... }:
 let
   load = import ../lib/load.nix { };
   loadWithSkip = skip: import ../lib/load.nix { inherit skip; };
@@ -53,6 +53,7 @@ in
     ./devShell.nix
     # Formatting, lint, pre-commit, and CI quality gates, propagated to leaves.
     (import ./checks { inherit inputs; })
+    ./catalog.nix
   ]
   ++ features
   ++ profiles
@@ -61,22 +62,34 @@ in
   options.flake = {
     profiles = lib.mkOption {
       type = lib.types.lazyAttrsOf (
-        lib.types.submodule {
-          options = {
-            nixos = lib.mkOption {
-              type = lib.types.listOf lib.types.raw;
-              default = [ ];
+        lib.types.submodule (
+          { name, ... }:
+          {
+            options = {
+              name = lib.mkOption {
+                type = lib.types.str;
+                default = name;
+                readOnly = true;
+                description = "Profile name (the attribute key).";
+              };
+              nixos = lib.mkOption {
+                type = lib.types.listOf (lib.types.enum (lib.attrNames config.flake.modules.nixos));
+                default = [ ];
+                description = "Names of `flake.modules.nixos` modules in this profile.";
+              };
+              homeManager = lib.mkOption {
+                type = lib.types.listOf (lib.types.enum (lib.attrNames config.flake.modules.homeManager));
+                default = [ ];
+                description = "Names of `flake.modules.homeManager` modules in this profile.";
+              };
+              darwin = lib.mkOption {
+                type = lib.types.listOf (lib.types.enum (lib.attrNames config.flake.modules.darwin));
+                default = [ ];
+                description = "Names of `flake.modules.darwin` modules in this profile.";
+              };
             };
-            homeManager = lib.mkOption {
-              type = lib.types.listOf lib.types.raw;
-              default = [ ];
-            };
-            darwin = lib.mkOption {
-              type = lib.types.listOf lib.types.raw;
-              default = [ ];
-            };
-          };
-        }
+          }
+        )
       );
       default = { };
       description = "Class-keyed module aggregates, composed by the builders.";

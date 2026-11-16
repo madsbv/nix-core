@@ -7,6 +7,7 @@
 { config, ... }:
 let
   baseProfile = config.flake.profiles.base;
+  profileLib = import ./_profiles.nix { inherit lib; };
 in
 {
   flake.lib.mkHomeConfig =
@@ -20,11 +21,12 @@ in
     }:
     let
       pkgs = inputs.nixpkgs.legacyPackages.${system};
-      profilesHm = lib.concatLists (map (p: p.homeManager) profiles);
+      profilesHm = profileLib.modulesFor config.flake.modules "homeManager" profiles;
     in
     inputs.home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
       modules = [
+        { mine.profileManifest = profileLib.manifest profiles; }
         (
           {
             config,

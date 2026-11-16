@@ -14,6 +14,7 @@
 let
   homeManagerDarwinModule = inputs.home-manager.darwinModules.home-manager;
   baseProfile = config.flake.profiles.base;
+  profileLib = import ./_profiles.nix { inherit lib; };
 in
 {
   flake.lib.mkDarwinHost =
@@ -30,8 +31,8 @@ in
       profiles' = map toClassKeyed profiles;
       modules' = toClassKeyed modules;
 
-      profilesDarwin = lib.concatLists (map (p: p.darwin) profiles');
-      profilesHm = lib.concatLists (map (p: p.homeManager) profiles');
+      profilesDarwin = profileLib.modulesFor config.flake.modules "darwin" profiles';
+      profilesHm = profileLib.modulesFor config.flake.modules "homeManager" profiles';
       modulesDarwin = modules'.darwin;
       modulesHm = modules'.homeManager;
 
@@ -49,6 +50,7 @@ in
       modules = [
         {
           networking.hostName = lib.mkDefault hostname;
+          mine.profileManifest = profileLib.manifest profiles;
         }
         homeManagerDarwinModule
         primaryUserHm
