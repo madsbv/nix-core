@@ -9,7 +9,7 @@
 # It closes over core's pinned `inputs`, so leaves reach home-manager,
 # nix-darwin, agenix(-rekey) and deploy-rs through core without declaring them.
 { inputs }:
-{ lib, ... }:
+{ lib, self, ... }:
 let
   load = import ../lib/load.nix { };
   loadWithSkip = skip: import ../lib/load.nix { inherit skip; };
@@ -86,6 +86,20 @@ in
               exec ${config.treefmt.build.wrapper}/bin/treefmt "$@"
             ''
           );
+        };
+    }
+    # treefmt's statix formatter only applies fixes and never reports what it
+    # cannot fix, so the lint is enforced here as a check instead. `self` is the
+    # consuming flake, so leaves lint their own sources.
+    {
+      perSystem =
+        { pkgs, ... }:
+        {
+          checks.statix = pkgs.runCommandLocal "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
+            cd ${self}
+            statix check .
+            touch $out
+          '';
         };
     }
   ]
