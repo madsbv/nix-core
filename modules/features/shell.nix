@@ -13,7 +13,7 @@ let
   commonAliases =
     { pkgs, flakeRoot }:
     {
-      gj = "just ${flakeRoot}";
+      gj = "just --justfile ${flakeRoot}/justfile";
       j = "just";
       ls = "${pkgs.eza}/bin/eza --binary --header --git --git-repos --all";
       l = "ls -alh";
