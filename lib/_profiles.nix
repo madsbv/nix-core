@@ -22,9 +22,9 @@ in
     lib.concatMap (p: map (name: registry.${class}.${name}) p.${class}) profiles;
 
   manifest = profiles: {
-    profiles = map (p: p.name or "(inline)") profiles;
+    profiles = map (p: p.name) profiles;
     excluded = lib.filterAttrs (_: names: names != [ ]) (
-      lib.listToAttrs (map (p: lib.nameValuePair (p.name or "(inline)") (p.excluded or [ ])) profiles)
+      lib.listToAttrs (map (p: lib.nameValuePair p.name (p.excluded or [ ])) profiles)
     );
     modules = lib.genAttrs classes (class: lib.unique (lib.concatMap (p: p.${class}) profiles));
   };
