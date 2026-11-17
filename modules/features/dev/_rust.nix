@@ -165,7 +165,7 @@ _: {
               CARGO_HOME = cargoHome;
               CARGO_TARGET_DIR = "${cargoHome}/target";
             }
-            // lib.mkIf pkgs.stdenv.isDarwin {
+            // lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
               # Fix cargo failing to find libiconv when C-linking on Darwin.
               LIBRARY_PATH = "${pkgs.darwin.libiconv}/lib";
             };
@@ -205,7 +205,7 @@ _: {
                 pkgs.cargo-nextest
                 pkgs.cargo-watch
               ]
-              ++ lib.optionals pkgs.stdenv.isLinux [
+              ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
                 # 251122: Version 0.45 failing to build on Darwin.
                 pkgs.cargo-semver-checks
               ];
