@@ -7,8 +7,8 @@ set -euo pipefail
 input="${1:-}"
 
 if [ -z "$input" ]; then
-    echo "Usage: gh-clone <owner/repo> | <https://github.com/owner/repo>" >&2
-    exit 1
+	echo "Usage: gh-clone <owner/repo> | <https://github.com/owner/repo>" >&2
+	exit 1
 fi
 
 # Strip trailing slash and .git suffix
@@ -16,26 +16,32 @@ input="${input%/}"
 input="${input%.git}"
 
 # Parse owner/repo from URL or shorthand
-if [[ "$input" =~ ^https?://github\.com/([^/]+)/([^/]+)$ ]]; then
-    owner="${BASH_REMATCH[1]}"
-    repo="${BASH_REMATCH[2]}"
-elif [[ "$input" =~ ^([^/]+)/([^/]+)$ ]]; then
-    owner="${BASH_REMATCH[1]}"
-    repo="${BASH_REMATCH[2]}"
+if [[ "$input" =~ ^https?://github\.com/([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)$ ]]; then
+	owner="${BASH_REMATCH[1]}"
+	repo="${BASH_REMATCH[2]}"
+elif [[ "$input" =~ ^([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)$ ]]; then
+	owner="${BASH_REMATCH[1]}"
+	repo="${BASH_REMATCH[2]}"
 else
-    echo "Error: Could not parse '$input'. Expected formats:" >&2
-    echo "  gh-clone owner/repo" >&2
-    echo "  gh-clone https://github.com/owner/repo" >&2
-    exit 1
+	echo "Error: Could not parse '$input'. Expected formats:" >&2
+	echo "  gh-clone owner/repo" >&2
+	echo "  gh-clone https://github.com/owner/repo" >&2
+	exit 1
+fi
+
+# Reject "." and ".." (all dots) so the target path cannot leave ~/workspace/github
+if [[ "$owner" =~ ^\.+$ || "$repo" =~ ^\.+$ ]]; then
+	echo "Error: invalid owner or repo name in '$input'." >&2
+	exit 1
 fi
 
 target="$HOME/workspace/github/$owner/$repo"
 
 if [ -d "$target/.git" ]; then
-    echo "Already exists at $target — pulling latest..."
-    git -C "$target" pull --rebase
+	echo "Already exists at $target — pulling latest..."
+	git -C "$target" pull --rebase
 else
-    echo "Cloning $owner/$repo to $target..."
-    mkdir -p "$(dirname "$target")"
-    git clone "https://github.com/$owner/$repo.git" "$target"
+	echo "Cloning $owner/$repo to $target..."
+	mkdir -p "$(dirname "$target")"
+	git clone "https://github.com/$owner/$repo.git" "$target"
 fi
